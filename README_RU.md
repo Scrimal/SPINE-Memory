@@ -140,7 +140,9 @@ flowchart LR
     ├── _check_anchors.py
     ├── _crosslink.py
     ├── _wander.py
-    └── _quality_audit.py
+    ├── _quality_audit.py
+    ├── mcp_server.py          # MCP-сервер (FastMCP)
+    └── benchmark_tokens.py    # бенчмарк экономии токенов
 ```
 
 Демо-корпус (`KEDR_001..003`) написан на **русском** — для проверки
@@ -169,6 +171,13 @@ python tools/_quality_audit.py --nodes nodes --raw raw
 # 5. Генерация перекрёстных связей (dry run / применить)
 python tools/_crosslink.py --folder nodes
 python tools/_crosslink.py --folder nodes --apply
+
+# 6. MCP-сервер (stdio, для Claude Desktop / Cursor / Windsurf)
+pip install -r requirements.txt
+python tools/mcp_server.py
+
+# 7. Бенчмарк экономии токенов
+python tools/benchmark_tokens.py
 ```
 
 ---

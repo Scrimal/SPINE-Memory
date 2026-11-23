@@ -137,7 +137,9 @@ consumes model tokens).
     ├── _check_anchors.py
     ├── _crosslink.py
     ├── _wander.py
-    └── _quality_audit.py
+    ├── _quality_audit.py
+    ├── mcp_server.py          # MCP server (FastMCP)
+    └── benchmark_tokens.py    # token savings benchmark
 ```
 
 The demo corpus (`KEDR_001..003`) is written in **Russian** to verify Cyrillic
@@ -166,6 +168,13 @@ python tools/_quality_audit.py --nodes nodes --raw raw
 # 5. Crosslink generation (dry run / apply)
 python tools/_crosslink.py --folder nodes
 python tools/_crosslink.py --folder nodes --apply
+
+# 6. MCP server (stdio, for Claude Desktop / Cursor / Windsurf)
+pip install -r requirements.txt
+python tools/mcp_server.py
+
+# 7. Token savings benchmark
+python tools/benchmark_tokens.py
 ```
 
 ---

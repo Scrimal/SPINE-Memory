@@ -1,0 +1,3 @@
+# SPINE-Memory tools — dependencies
+fastmcp>=2.0.0        # MCP server (mcp_server.py)
+tiktoken>=0.7.0       # optional: precise local token counting (benchmark_tokens.py)
