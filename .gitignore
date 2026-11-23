@@ -1,0 +1,16 @@
+# Внутренние файлы — не публикуем
+Задача.md
+Cydra9MsrGrizzly/
+
+# Obsidian-служебное
+.obsidian/
+.obsidian
+
+# Временные файлы
+~$*
+*.docx
+
+# Артефакты работы скриптов
+audit_report.txt
+__pycache__/
+*.pyc
