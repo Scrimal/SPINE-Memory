@@ -167,6 +167,23 @@ One record = one full cycle:
 Forbidden: batch processing without validation, shrinking `SOURCE_BASE` below
 threshold, skipping nodes during numbering (chronology matters more than speed).
 
+### 6.1 Staging: Temp → Critic → Commit
+
+Batch processing is built around a temporary buffer and a deterministic critic
+so that raw or invalid nodes never pollute the production graph:
+
+1. **Temp Staging** — a node draft is written to a `TEMP` buffer, not to the
+   production base.
+2. **Zero-Token Critic** — `_critic_check.sh` runs on the draft (token-free:
+   bash/Python, no LLM).
+3. **Bounded Discretion** — the agent resolves boundary cases on its own (a
+   short source below the line limit, a decimal point mistaken for a sentence
+   terminator) without looping in self-criticism.
+4. **Atomic Commit** — only a valid node enters the graph.
+5. **Context Compaction** — every 5 nodes the heavy context is compacted into
+   lightweight snapshots (impulse/summary), sustaining **40+ nodes (500k+
+   tokens) per session** without degradation at **~$0.01/node**.
+
 ---
 
 ## 7. Tools

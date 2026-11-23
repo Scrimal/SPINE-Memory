@@ -2,7 +2,7 @@
 
 > Read this in: [English](README.md) · [Русский](README_RU.md)
 
-![CI](https://github.com/YOUR_USERNAME/SPINE-Memory/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Scrimal/SPINE-Memory/actions/workflows/ci.yml/badge.svg)
 
 **SPINE** is a lightweight Markdown- and YAML-based cognitive memory framework
 that gives LLM agents persistent, scalable, low-latency long-term memory without
@@ -86,6 +86,32 @@ biological neural organization:
 | YAML validity — demo corpus | 100% (3/3 PASS) |
 | Chunk granularity | ~5,000 chars |
 | Retrieval strategy | progressive disclosure |
+
+---
+
+## Batch Ingestion & Staging Workflow
+
+```mermaid
+flowchart LR
+    A[Raw Chunk] --> B[Temp Staging]
+    B --> C{Zero-Token Critic}
+    C -- PASS --> D[Atomic Commit]
+    C -- FAIL --> B
+    D --> E[Context Compaction<br/>every 5 nodes]
+    E --> F[Next Chunk]
+```
+
+The agent writes each node draft into a temporary buffer (`TEMP`), runs
+`_critic_check.sh` on it, resolves boundary cases on its own with bounded
+discretion (e.g. a short source chunk, or a decimal point miscounted as a
+sentence terminator) without looping in self-criticism, and only then atomically
+commits the valid node into the production graph. Every 5 nodes the heavy
+context is compacted into lightweight snapshots.
+
+This staging discipline enables ingesting **40+ raw nodes in a row (500k+
+tokens)** in a single session without degradation, at a marginal cost of
+**~$0.01/node** (deterministic validation is token-free; only the final write
+consumes model tokens).
 
 ---
 

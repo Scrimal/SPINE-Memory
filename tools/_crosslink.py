@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
-"""SPINE crosslink — генерация семантических связей между узлами.
+"""SPINE crosslink — generate semantic links between nodes.
 
-Правила: связь создаётся внутри одного созвездия ИЛИ при пересечении
->=2 якорей. Лимит связей на узел — параметр --max (по умолчанию 1).
+Rules: a link is created inside the same constellation OR on overlap of
+>=2 anchors. Per-node link limit is controlled by --max (default 1).
 
-Запуск:
-  python tools/_crosslink.py --folder nodes           # сухой прогон
-  python tools/_crosslink.py --folder nodes --apply    # применить
+Links are written into the YAML frontmatter `semantic_links:` list so that
+_wander.py and any v2.1-compliant reader can see them.
+
+Usage:
+  python tools/_crosslink.py --folder nodes           # dry run
+  python tools/_crosslink.py --folder nodes --apply    # apply
 """
 
 import argparse
 import os
 import re
+import sys
 from collections import defaultdict
 
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 MIN_ANCHOR_OVERLAP = 2
-MAX_LINKS_PER_NODE = 1
 
 
 def read_node(path):
@@ -71,6 +77,7 @@ def read_node(path):
             elif s and not s.startswith('#'):
                 in_links = False
 
+    # Backward compatibility: legacy links in the body section.
     body = parts[2]
     if '## SEMANTIC_LINKS' in body:
         sem_body = body.split('## SEMANTIC_LINKS')[1].split('##')[0]
@@ -129,13 +136,13 @@ def find_pairs(nodes):
     return unique
 
 
-def apply_link(nid, target, reason, nodes):
+def apply_link(nid, target, reason, nodes, max_links):
     nd = nodes.get(nid)
     if not nd:
         return False
     if target in nd['existing_links']:
         return False
-    if len(nd['existing_links']) >= MAX_LINKS_PER_NODE:
+    if len(nd['existing_links']) >= max_links:
         return False
 
     path = nd['path']
@@ -148,22 +155,24 @@ def apply_link(nid, target, reason, nodes):
     fm = parts[1]
     body = parts[2]
 
-    if '## SEMANTIC_LINKS' not in body:
-        body += '\n## SEMANTIC_LINKS\n'
-    body += f'- [[{target}]]::{reason}\n'
+    new_link = f'  - "[[{target}]]::{reason}"'
+    if 'semantic_links:' in fm:
+        fm_new = fm.replace('semantic_links:', 'semantic_links:\n' + new_link, 1)
+    else:
+        fm_new = fm.rstrip() + '\nsemantic_links:\n' + new_link + '\n'
 
-    new_content = '---' + fm + '---' + body
+    new_content = '---' + fm_new + '---' + body
     with open(path, 'w', encoding='utf-8') as f:
         f.write(new_content)
     return True
 
 
 def main():
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description='Generate semantic links between SPINE nodes.')
     p.add_argument('--folder', action='append', default=None,
                    help='folder with nodes (repeatable)')
-    p.add_argument('--apply', action='store_true')
-    p.add_argument('--max', type=int, default=MAX_LINKS_PER_NODE)
+    p.add_argument('--apply', action='store_true', help='write links to files')
+    p.add_argument('--max', type=int, default=1, help='max links per node')
     args = p.parse_args()
 
     folders = args.folder or ['nodes']
@@ -188,12 +197,12 @@ def main():
     if args.apply:
         applied = 0
         for a, b, reason in filtered:
-            r1 = apply_link(a, b, reason, nodes)
-            r2 = apply_link(b, a, reason, nodes)
+            r1 = apply_link(a, b, reason, nodes, args.max)
+            r2 = apply_link(b, a, reason, nodes, args.max)
             if r1 or r2:
                 applied += 1
                 print(f'  {a} <-> {b}  [{reason}]')
-        print(f'\napplied: {applied}')
+        print(f'\napplied: {applied} links')
     else:
         print('DRY RUN (use --apply). Samples:')
         for a, b, reason in filtered[:20]:

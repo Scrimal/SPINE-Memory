@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""SPINE quality audit — глобальный аудит узлов, якорей и метрик.
+"""SPINE quality audit — global audit of nodes, anchors and metrics.
 
-Проверяет: наличие обязательных полей, лимиты секций, ratio SOURCE/RAW,
-повторное использование якорей, возможные синонимы (общий корень).
+Checks: required fields, section limits, SOURCE/RAW retention ratio,
+anchor reuse, possible synonyms (shared root).
 
-Запуск:
+Usage:
   python tools/_quality_audit.py --nodes nodes --raw raw
-  Результат: audit_report.txt
+  Output: audit_report.txt
 """
 
 import argparse
@@ -19,9 +19,11 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
+MIN_SOURCE_RETENTION = 0.70
+
 
 def extract_section(content, name):
-    """Извлекает тело секции '# name' до следующего заголовка '# ' или '---'."""
+    """Extract the body of section '# name' until the next '# ' header or '---'."""
     lines = content.split('\n')
     result = []
     inside = False
@@ -96,7 +98,7 @@ def read_node(path, raw_folder):
     if not content.strip().endswith('---'):
         result['issues'].append('[NO_CLOSE]')
 
-    # Секции нового формата
+    # New-format sections
     imp = extract_section(content, '# IMPULSE')
     imp_lines = count_lines(imp)
     result['impulse'] = imp_lines
@@ -142,15 +144,15 @@ def read_node(path, raw_folder):
     if len(anchors) > 5:
         result['issues'].append('ANCHORS:%d' % len(anchors))
 
-    # SOURCE_BASE / raw ratio
+    # SOURCE_BASE / raw retention ratio
     if num_id and raw_folder:
         raw_path = os.path.join(raw_folder, 'U' + num_id + '.md')
         if os.path.exists(raw_path):
             raw_size = os.path.getsize(raw_path)
-            src_chars = len(src.encode('utf-8'))
-            src_pct = src_chars * 100 / max(raw_size, 1)
+            src_bytes = len(src.encode('utf-8'))
+            src_pct = src_bytes * 100 / max(raw_size, 1)
             result['src_pct'] = int(src_pct)
-            if src_pct < 40:
+            if src_pct < MIN_SOURCE_RETENTION * 100:
                 result['issues'].append('SRC_RAW:%d%%' % int(src_pct))
         else:
             result['src_pct'] = 0
@@ -161,11 +163,11 @@ def read_node(path, raw_folder):
 
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument('--nodes', default='nodes')
-    p.add_argument('--raw', default='raw')
-    p.add_argument('--report', default='audit_report.txt')
-    args = p.parse_args()
+    parser = argparse.ArgumentParser(description='Global quality audit for SPINE nodes.')
+    parser.add_argument('--nodes', default='nodes', help='folder with processed nodes')
+    parser.add_argument('--raw', default='raw', help='folder with raw chunks')
+    parser.add_argument('--report', default='audit_report.txt', help='output report path')
+    args = parser.parse_args()
 
     if not os.path.exists(args.nodes):
         print('NOT FOUND:', args.nodes)
@@ -219,7 +221,7 @@ def main():
             d.get('impulse', 0), d.get('summary', 0), d.get('cleaned', 0),
             d.get('source', 0), d.get('src_pct', 0), d.get('shared_anchors', 0))
         flags = ', '.join(d['issues'][:5]) if d['issues'] else '-'
-        lines.append('%-4s | %-14s | %-6s | %s%s' % (
+        lines.append('%-4s | %-14s | %-4s | %s%s' % (
             d['id'], d['domain'], tag, flags[:60], extra))
 
     lines.append('')
@@ -253,7 +255,8 @@ def main():
         lines.append('')
         lines.append('AVERAGES (%d nodes)' % len(nodes))
         lines.append('IMPULSE: %.1f (lim 2) | SUMMARY: %.1f (lim 5) | CLEANED: %.1f' % (avg_imp, avg_sum, avg_cln))
-        lines.append('SOURCE: %.1f lines (lim 15) | SRC/RAW: %.0f%%' % (avg_src, avg_srcpct))
+        lines.append('SOURCE: %.1f lines | SRC/RAW: %.0f%% (min %d%%)' % (
+            avg_src, avg_srcpct, int(MIN_SOURCE_RETENTION * 100)))
 
     report = '\n'.join(lines)
     with open(args.report, 'w', encoding='utf-8') as f:

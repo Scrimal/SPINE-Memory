@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""SPINE anchor validator — валидация search_anchors против канона.
+"""SPINE anchor validator — validate search_anchors against the canon.
 
-Запуск:
+The canon file `anchor_dump.json` supports two formats:
+  - new: {"anchor": ["node_id", ...], ...}   (anchor as key)
+  - old: {"node_id": ["anchor", ...], ...}   (node id as key)
+
+Format is detected by key shape, not by a hardcoded prefix list, so any node
+id works (DOC_001, NOTE_12, KEDR_001, ...).
+
+Usage:
   python tools/_check_anchors.py nodes/KEDR_001.md --dump anchors/anchor_dump.json
   python tools/_check_anchors.py nodes/KEDR_001.md --dump anchors/anchor_dump.json --quiet
 
-Выход: 0 = PASS, 1 = WARN (новый якорь), 2 = FAIL (дубликат/формат).
+Exit: 0 = PASS, 1 = WARN (new anchor), 2 = FAIL (duplicate/format).
 """
 
+import argparse
 import json
 import os
 import re
@@ -22,6 +30,7 @@ FUZZY_THRESHOLD = 0.78
 MAX_TOKENS = 5
 MIN_TOKENS = 2
 ANCHOR_PATTERN = re.compile(r'^[a-zа-яё0-9_]+$')
+NODE_ID_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]*\d+$')
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DUMP = os.environ.get(
@@ -36,20 +45,24 @@ def load_anchor_dump(path):
         return set()
     with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
+
+    if not data:
+        return set()
+
     all_anchors = set()
-    first_key = next(iter(data), "")
-    is_new_format = not (first_key.startswith(("U", "APR", "PRE", "CROFT", "KEDR")))
-    if is_new_format:
+    keys = list(data.keys())
+    # Old format: every key looks like a node id (U001, KEDR_001, DOC_001, NOTE_12).
+    if all(NODE_ID_RE.match(k) for k in keys):
+        for anchors in data.values():
+            for a in anchors:
+                a_clean = str(a).split('#')[0].strip()
+                if a_clean:
+                    all_anchors.add(a_clean)
+    else:
         for anchor in data.keys():
             a_clean = anchor.split('#')[0].strip()
             if a_clean:
                 all_anchors.add(a_clean)
-    else:
-        for anchors in data.values():
-            for a in anchors:
-                a_clean = a.split('#')[0].strip()
-                if a_clean:
-                    all_anchors.add(a_clean)
     return all_anchors
 
 
@@ -115,21 +128,20 @@ def check_format(anchor):
 
 
 def main():
-    quiet = '--quiet' in sys.argv or '-q' in sys.argv
-    args = [a for a in sys.argv[1:] if not a.startswith('-')]
+    parser = argparse.ArgumentParser(
+        description='Validate search_anchors against the anchor canon.'
+    )
+    parser.add_argument('node', help='path to a node file')
+    parser.add_argument('--dump', default=None,
+                        help='path to anchor_dump.json (default: anchors/anchor_dump.json)')
+    parser.add_argument('--quiet', '-q', action='store_true',
+                        help='short one-line output')
+    args = parser.parse_args()
 
-    if len(args) < 1:
-        print("usage: python _check_anchors.py <node_file> [--dump path] [--quiet]")
-        sys.exit(0)
-
-    node_path = args[0]
-    dump_path = DEFAULT_DUMP
-    if '--dump' in sys.argv:
-        dump_idx = sys.argv.index('--dump')
-        if dump_idx + 1 < len(sys.argv):
-            dump_path = sys.argv[dump_idx + 1]
-
+    node_path = args.node
+    dump_path = args.dump or os.environ.get('SPINE_ANCHOR_DUMP', DEFAULT_DUMP)
     node_name = os.path.basename(node_path)
+
     canonical = load_anchor_dump(dump_path)
     node_anchors = extract_anchors(node_path)
 
@@ -160,7 +172,7 @@ def main():
     exit_code = 0
     issues = len(format_errors) + len(duplicates)
 
-    if quiet:
+    if args.quiet:
         if issues > 0:
             print(f"FAIL {node_name}: {issues} issue(s)")
             for a, errs in format_errors:
