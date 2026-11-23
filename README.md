@@ -2,6 +2,8 @@
 
 > Read this in: [English](README.md) · [Русский](README_RU.md)
 
+![CI](https://github.com/YOUR_USERNAME/SPINE-Memory/actions/workflows/ci.yml/badge.svg)
+
 **SPINE** is a lightweight Markdown- and YAML-based cognitive memory framework
 that gives LLM agents persistent, scalable, low-latency long-term memory without
 heavy vector-database overhead.
@@ -92,7 +94,8 @@ biological neural organization:
 ```
 .
 ├── methodology/
-│   └── SPINE_METHODOLOGY.md   # format spec and rules
+│   ├── SPINE_METHODOLOGY.md      # format spec (RU)
+│   └── SPINE_METHODOLOGY_EN.md   # format spec (EN)
 ├── raw/
 │   ├── U001.md                # raw chunk #1
 │   ├── U002.md                # raw chunk #2
@@ -169,4 +172,4 @@ semantic_links:
 ---
 ```
 
-Full specification: `methodology/SPINE_METHODOLOGY.md`.
+Full specification: `methodology/SPINE_METHODOLOGY_EN.md` (RU: `methodology/SPINE_METHODOLOGY.md`).

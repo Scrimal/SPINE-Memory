@@ -2,6 +2,8 @@
 
 > Читать на: [Русский](README_RU.md) · [English](README.md)
 
+![CI](https://github.com/YOUR_USERNAME/SPINE-Memory/actions/workflows/ci.yml/badge.svg)
+
 **SPINE** — лёгкий фреймворк когнитивной памяти на Markdown и YAML, дающий
 LLM-агентам устойчивую, масштабируемую и низколатентную долговременную память
 без тяжёлой векторной инфраструктуры.
@@ -95,7 +97,8 @@ SPINE организует память в **3-уровневую когнити
 ```
 .
 ├── methodology/
-│   └── SPINE_METHODOLOGY.md   # спецификация формата и правил
+│   ├── SPINE_METHODOLOGY.md      # спецификация (RU)
+│   └── SPINE_METHODOLOGY_EN.md   # спецификация (EN)
 ├── raw/
 │   ├── U001.md                # сырой чанк №1
 │   ├── U002.md                # сырой чанк №2
@@ -172,4 +175,4 @@ semantic_links:
 ---
 ```
 
-Полная спецификация: `methodology/SPINE_METHODOLOGY.md`.
+Полная спецификация: `methodology/SPINE_METHODOLOGY.md` (EN: `methodology/SPINE_METHODOLOGY_EN.md`).

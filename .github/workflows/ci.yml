@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Critic audit (nodes)
+        run: bash tools/_critic_check.sh nodes raw anchors/anchor_dump.json
+
+      - name: Anchor validation
+        run: |
+          python tools/_check_anchors.py nodes/KEDR_001.md --dump anchors/anchor_dump.json --quiet
+          python tools/_check_anchors.py nodes/KEDR_002.md --dump anchors/anchor_dump.json --quiet
+          python tools/_check_anchors.py nodes/KEDR_003.md --dump anchors/anchor_dump.json --quiet
+
+      - name: Quality audit
+        run: python tools/_quality_audit.py --nodes nodes --raw raw
+
+      - name: Graph traversal smoke test
+        run: python tools/_wander.py --from KEDR_001 --hops 2 --folder nodes
+
+      - name: Crosslink dry run
+        run: python tools/_crosslink.py --folder nodes
