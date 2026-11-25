@@ -143,6 +143,7 @@ consumes model tokens).
     ├── _wander.py
     ├── _quality_audit.py
     ├── _build_index.py        # rebuild reverse_index + anchor canon
+    ├── night_daemon.py        # nightly consolidation + self-audit
     ├── mcp_server.py          # MCP server (FastMCP)
     └── benchmark_tokens.py    # token savings benchmark
 ```
@@ -186,6 +187,9 @@ python tools/benchmark_tokens.py
 
 # 8. Rebuild reverse index + refresh anchor canon
 python tools/_build_index.py
+
+# 9. Nightly consolidation + self-audit
+python tools/night_daemon.py --folder nodes
 ```
 
 ---

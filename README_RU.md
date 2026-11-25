@@ -146,6 +146,7 @@ flowchart LR
     ├── _wander.py
     ├── _quality_audit.py
     ├── _build_index.py        # пересборка reverse_index + канона якорей
+    ├── night_daemon.py        # ночная консолидация + самоаудит
     ├── mcp_server.py          # MCP-сервер (FastMCP)
     └── benchmark_tokens.py    # бенчмарк экономии токенов
 ```
@@ -189,6 +190,9 @@ python tools/benchmark_tokens.py
 
 # 8. Пересборка обратного индекса + обновление канона якорей
 python tools/_build_index.py
+
+# 9. Ночная консолидация + самоаудит
+python tools/night_daemon.py --folder nodes
 ```
 
 ---
