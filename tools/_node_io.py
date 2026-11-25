@@ -249,6 +249,11 @@ def read_node(path):
         'cleaned_data': secs.get('cleaned_data', ''),
         'impact': secs.get('impact', ''),
         'source_base': secs.get('source_base', ''),
+        # dev-overlay fields (CODE_MEMORY preset) — generic frontmatter pass-through
+        'kind': fm.get('kind'),
+        'status': fm.get('status'),
+        'code_refs': fm.get('code_refs') or [],
+        'repo_ref': fm.get('repo_ref') or {},
     }
 
 

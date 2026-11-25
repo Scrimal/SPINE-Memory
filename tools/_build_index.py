@@ -29,13 +29,18 @@ REVERSE_INDEX = os.path.join(BASE, '..', 'reverse_index.json')
 def read_node(path):
     """Read a node via the canonical _node_io parser.
 
-    Returns (nid, semantic_links, embed_links, anchors) for backward
-    compatibility with the rest of this script.
+    Returns (nid, semantic_links, embed_links, anchors, code_refs).
     """
     d = _node_io.read_node(path)
     if d is None:
-        return None, [], [], []
-    return d['id'], d['semantic_links'], d['embed_links'], d['search_anchors']
+        return None, [], [], [], []
+    return (d['id'], d['semantic_links'], d['embed_links'],
+            d['search_anchors'], d['code_refs'])
+
+
+def _code_ref_path(ref):
+    """Extract the file path from a code_ref like 'src/a.py::fn@commit'."""
+    return ref.split('::')[0].split('@')[0].strip()
 
 
 def invert(forward):
@@ -49,16 +54,23 @@ def invert(forward):
 
 
 def main():
-    forward, embed_forward, anchor_nodes = {}, {}, {}
+    forward, embed_forward, anchor_nodes, code_index = {}, {}, {}, {}
     if os.path.isdir(NODES_DIR):
         for fn in sorted(os.listdir(NODES_DIR)):
             if not fn.endswith('.md'):
                 continue
-            nid, sem, embed, anchors = read_node(os.path.join(NODES_DIR, fn))
+            nid, sem, embed, anchors, code_refs = read_node(os.path.join(NODES_DIR, fn))
             forward[nid] = sem
             embed_forward[nid] = embed
             for a in anchors:
                 anchor_nodes.setdefault(a, []).append(nid)
+            for ref in code_refs:
+                p = _code_ref_path(ref)
+                if p:
+                    code_index.setdefault(p, []).append(nid)
+
+    for p in code_index:
+        code_index[p] = sorted(set(code_index[p]))
 
     reverse = invert(forward)
     embed_reverse = invert(embed_forward)
@@ -69,6 +81,7 @@ def main():
             'reverse': reverse,
             'embed_forward': embed_forward,
             'embed_reverse': embed_reverse,
+            'code_index': code_index,
         }, f, ensure_ascii=False, indent=2)
 
     canon = {}

@@ -160,6 +160,24 @@ def spine_backlinks(node_id: str, include_embed: bool = False) -> list[str]:
     return load_reverse(include_embed).get(node_id, [])
 
 
+@mcp.tool()
+def spine_for_file(filepath: str) -> list[dict]:
+    """Return SPINE nodes (ADR/post-mortem/gotcha) linked to a code file."""
+    path = os.path.join(BASE, '..', 'reverse_index.json')
+    if not os.path.exists(path):
+        return []
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    code_index = data.get('code_index', {})
+    hits = set()
+    for fp, nids in code_index.items():
+        if fp == filepath or fp.endswith(filepath) or filepath.endswith(fp):
+            hits.update(nids)
+    node_index, _ = load_index()
+    return [{'id': n, 'impulse': node_index.get(n, {}).get('impulse', '')}
+            for n in sorted(hits)]
+
+
 @mcp.resource('spine://nodes/{node_id}')
 def get_node(node_id: str) -> str:
     """Full markdown of a single node."""
