@@ -34,5 +34,33 @@
     "Кедр_Тайны_Груза": [
       "KEDR_003"
     ]
+  },
+  "embed_forward": {
+    "KEDR_001": [
+      "KEDR_002",
+      "KEDR_003"
+    ],
+    "KEDR_002": [
+      "KEDR_001",
+      "KEDR_003"
+    ],
+    "KEDR_003": [
+      "KEDR_001",
+      "KEDR_002"
+    ]
+  },
+  "embed_reverse": {
+    "KEDR_002": [
+      "KEDR_001",
+      "KEDR_003"
+    ],
+    "KEDR_003": [
+      "KEDR_001",
+      "KEDR_002"
+    ],
+    "KEDR_001": [
+      "KEDR_002",
+      "KEDR_003"
+    ]
   }
 }

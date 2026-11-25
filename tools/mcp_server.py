@@ -63,6 +63,7 @@ def read_node(path):
         'id': os.path.basename(path).replace('.md', ''),
         'anchors': [],
         'sem_links': [],
+        'embed_links': [],
         'impulse': '',
         'summary': '',
         'cleaned': '',
@@ -83,6 +84,10 @@ def read_node(path):
         m = re.search(r'^semantic_links:\n((?:\s+-\s.*\n?)*)', fm_text, re.MULTILINE)
         if m:
             data['sem_links'] = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
+
+    m = re.search(r'## EMBED_LINKS\n((?:- .*\n?)*)', content)
+    if m:
+        data['embed_links'] = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
 
     data['impulse'] = extract_section(content, '# IMPULSE')
     data['summary'] = extract_section(content, '# SUMMARY')
@@ -106,14 +111,18 @@ def load_index():
     return node_index, anchor_index
 
 
-def load_reverse():
+def load_reverse(include_embed=False):
     """Load reverse links {target: [sources]} from reverse_index.json."""
     path = os.path.join(BASE, '..', 'reverse_index.json')
     if not os.path.exists(path):
         return {}
     with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return data.get('reverse', {})
+    rev = dict(data.get('reverse', {}))
+    if include_embed:
+        for tgt, srcs in data.get('embed_reverse', {}).items():
+            rev.setdefault(tgt, []).extend(srcs)
+    return rev
 
 
 mcp = FastMCP('spine-memory')
@@ -127,7 +136,7 @@ def spine_list_nodes() -> list[str]:
 
 
 @mcp.tool()
-def spine_wander(start: str, hops: int = 2) -> list[dict]:
+def spine_wander(start: str, hops: int = 2, include_embed: bool = False) -> list[dict]:
     """Walk the graph from a node (or anchor) and return impulse chain."""
     node_index, anchor_index = load_index()
 
@@ -149,7 +158,11 @@ def spine_wander(start: str, hops: int = 2) -> list[dict]:
         if not data:
             continue
         visited.append({'id': nid, 'depth': depth, 'impulse': data['impulse']})
-        for link in data['sem_links']:
+        links = list(data['sem_links'])
+        if include_embed:
+            links += data.get('embed_links', [])
+        links = list(dict.fromkeys(links))
+        for link in links:
             if link in node_index and link not in seen:
                 queue.append((link, depth + 1))
     return visited
@@ -175,9 +188,9 @@ def spine_search_anchors(anchor: str) -> list[str]:
 
 
 @mcp.tool()
-def spine_backlinks(node_id: str) -> list[str]:
+def spine_backlinks(node_id: str, include_embed: bool = False) -> list[str]:
     """Return node ids that link to the given node (from reverse_index.json)."""
-    return load_reverse().get(node_id, [])
+    return load_reverse(include_embed).get(node_id, [])
 
 
 @mcp.resource('spine://nodes/{node_id}')

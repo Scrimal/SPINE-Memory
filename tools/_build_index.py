@@ -2,9 +2,11 @@
 """SPINE index builder — compile reverse_index.json and refresh anchor_dump.json.
 
 Reads nodes/*.md and:
-  1. builds forward semantic links  {node_id: [target_ids]}
-  2. inverts them into reverse_index.json
-  3. refreshes anchors/anchor_dump.json with anchors found in nodes (canon)
+  1. builds forward semantic links  {node_id: [target_ids]} (YAML semantic_links)
+  2. builds embed links             {node_id: [target_ids]} (body ## EMBED_LINKS)
+  3. inverts both → reverse_index.json:
+       forward / reverse / embed_forward / embed_reverse
+  4. refreshes anchors/anchor_dump.json (canon)
 
 Usage:
   python tools/_build_index.py
@@ -20,13 +22,14 @@ ANCHOR_DUMP = os.path.join(BASE, '..', 'anchors', 'anchor_dump.json')
 REVERSE_INDEX = os.path.join(BASE, '..', 'reverse_index.json')
 
 
-def read_frontmatter(path):
+def read_node(path):
     with open(path, 'r', encoding='utf-8') as f:
         content = f.read()
     parts = content.split('---', 2)
     if len(parts) < 3:
-        return None, [], []
+        return None, [], [], []
     fm = parts[1]
+    body = parts[2]
 
     m = re.search(r'^id:\s*(\S+)', fm, re.MULTILINE)
     nid = m.group(1) if m else os.path.basename(path).replace('.md', '')
@@ -36,39 +39,52 @@ def read_frontmatter(path):
     if m:
         sem = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
 
+    embed = []
+    m = re.search(r'## EMBED_LINKS\n((?:- .*\n?)*)', body)
+    if m:
+        embed = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
+
     anchors = []
     m = re.search(r'^search_anchors:\n((?:\s+-\s.*\n?)*)', fm, re.MULTILINE)
     if m:
         anchors = [a.strip().split('#')[0].strip()
                    for a in re.findall(r'-\s*([^\s#]+)', m.group(1))]
-    return nid, sem, anchors
+    return nid, sem, embed, anchors
+
+
+def invert(forward):
+    rev = {}
+    for src, targets in forward.items():
+        for t in targets:
+            rev.setdefault(t, []).append(src)
+    for k in rev:
+        rev[k] = sorted(set(rev[k]))
+    return rev
 
 
 def main():
-    forward = {}
-    anchor_nodes = {}
+    forward, embed_forward, anchor_nodes = {}, {}, {}
     if os.path.isdir(NODES_DIR):
         for fn in sorted(os.listdir(NODES_DIR)):
             if not fn.endswith('.md'):
                 continue
-            nid, sem, anchors = read_frontmatter(os.path.join(NODES_DIR, fn))
+            nid, sem, embed, anchors = read_node(os.path.join(NODES_DIR, fn))
             forward[nid] = sem
+            embed_forward[nid] = embed
             for a in anchors:
                 anchor_nodes.setdefault(a, []).append(nid)
 
-    # Reverse index
-    reverse = {}
-    for src, targets in forward.items():
-        for t in targets:
-            reverse.setdefault(t, []).append(src)
-    for k in reverse:
-        reverse[k] = sorted(set(reverse[k]))
+    reverse = invert(forward)
+    embed_reverse = invert(embed_forward)
 
     with open(REVERSE_INDEX, 'w', encoding='utf-8') as f:
-        json.dump({'forward': forward, 'reverse': reverse}, f,
-                  ensure_ascii=False, indent=2)
+        json.dump({
+            'forward': forward,
+            'reverse': reverse,
+            'embed_forward': embed_forward,
+            'embed_reverse': embed_reverse,
+        }, f, ensure_ascii=False, indent=2)
 
-    # Refresh anchor canon (new format: {anchor: [node_ids]})
     canon = {}
     if os.path.exists(ANCHOR_DUMP):
         with open(ANCHOR_DUMP, 'r', encoding='utf-8') as f:
@@ -77,12 +93,11 @@ def main():
         canon.setdefault(a, []).extend(nids)
     for a in canon:
         canon[a] = sorted(set(canon[a]))
-
     with open(ANCHOR_DUMP, 'w', encoding='utf-8') as f:
         json.dump(canon, f, ensure_ascii=False, indent=2)
 
-    print('reverse_index.json: %d nodes -> %d reverse entries' % (
-        len(forward), len(reverse)))
+    print('reverse_index.json: semantic %d nodes / embed %d nodes' % (
+        len(forward), len(embed_forward)))
     print('anchor_dump.json: %d anchors' % len(canon))
 
 
