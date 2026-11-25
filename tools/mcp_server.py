@@ -24,6 +24,7 @@ Resources:
 import json
 import os
 import re
+import sys
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -31,70 +32,36 @@ except ImportError:  # pragma: no cover - fallback to the standalone package
     from fastmcp import FastMCP
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE)
+import _node_io
 NODES_DIR = os.path.join(BASE, '..', 'nodes')
 METHODOLOGY_EN = os.path.join(BASE, '..', 'methodology', 'SPINE_METHODOLOGY_EN.md')
 
 LAYERS = ('impulse', 'summary', 'cleaned', 'impact', 'source_base')
 
 
-def extract_section(content, name):
-    """Extract the body of section '# name' until the next '# ' header or '---'."""
-    lines = content.split('\n')
-    result = []
-    inside = False
-    for line in lines:
-        s = line.strip()
-        if not inside and s == name:
-            inside = True
-            continue
-        if inside:
-            if (s.startswith('# ') and s != name) or s == '---':
-                break
-            result.append(line)
-    return '\n'.join(result).strip()
-
-
 def read_node(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    data = {
+    d = _node_io.read_node(path)
+    if d is None:
+        return {
+            'path': path,
+            'id': os.path.basename(path).replace('.md', ''),
+            'anchors': [], 'sem_links': [], 'embed_links': [],
+            'impulse': '', 'summary': '', 'cleaned': '', 'impact': '',
+            'source_base': '',
+        }
+    return {
         'path': path,
-        'id': os.path.basename(path).replace('.md', ''),
-        'anchors': [],
-        'sem_links': [],
-        'embed_links': [],
-        'impulse': '',
-        'summary': '',
-        'cleaned': '',
-        'impact': '',
-        'source_base': '',
+        'id': d['id'],
+        'anchors': d['search_anchors'],
+        'sem_links': d['semantic_links'],
+        'embed_links': d['embed_links'],
+        'impulse': d['impulse'],
+        'summary': d['summary'],
+        'cleaned': d['cleaned_data'],
+        'impact': d['impact'],
+        'source_base': d['source_base'],
     }
-
-    fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
-    if fm_match:
-        fm_text = fm_match.group(1)
-        m = re.search(r'^id:\s*(\S+)', fm_text, re.MULTILINE)
-        if m:
-            data['id'] = m.group(1)
-        m = re.search(r'^search_anchors:\n((?:\s+-\s.*\n?)*)', fm_text, re.MULTILINE)
-        if m:
-            data['anchors'] = [a.strip().split('#')[0].strip()
-                               for a in re.findall(r'-\s*([^\s#]+)', m.group(1))]
-        m = re.search(r'^semantic_links:\n((?:\s+-\s.*\n?)*)', fm_text, re.MULTILINE)
-        if m:
-            data['sem_links'] = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
-
-    m = re.search(r'## EMBED_LINKS\n((?:- .*\n?)*)', content)
-    if m:
-        data['embed_links'] = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
-
-    data['impulse'] = extract_section(content, '# IMPULSE')
-    data['summary'] = extract_section(content, '# SUMMARY')
-    data['cleaned'] = extract_section(content, '# CLEANED_DATA')
-    data['impact'] = extract_section(content, '# IMPACT')
-    data['source_base'] = extract_section(content, '# SOURCE_BASE')
-    return data
 
 
 def load_index():

@@ -26,6 +26,9 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _node_io
+
 FUZZY_THRESHOLD = 0.78
 MAX_TOKENS = 5
 MIN_TOKENS = 2
@@ -70,30 +73,11 @@ def extract_anchors(node_path):
     if not os.path.exists(node_path):
         print(f"file not found: {node_path}")
         return []
-    with open(node_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    parts = content.split('---', 2)
-    if len(parts) < 3:
+    d = _node_io.read_node(node_path)
+    if d is None:
         print("YAML frontmatter not found")
         return []
-    yaml_block = parts[1]
-
-    anchors = []
-    in_anchors = False
-    for line in yaml_block.split('\n'):
-        stripped = line.strip()
-        if stripped.startswith('search_anchors:'):
-            in_anchors = True
-            continue
-        if in_anchors:
-            if stripped.startswith('- '):
-                anchor = stripped.lstrip('- ').strip().split('#')[0].strip()
-                if anchor:
-                    anchors.append(anchor)
-            elif stripped and not stripped.startswith('#'):
-                break
-    return anchors
+    return d['search_anchors']
 
 
 def fuzzy_match(anchor, canonical_set, threshold=FUZZY_THRESHOLD):

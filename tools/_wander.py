@@ -18,56 +18,20 @@ import sys
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _node_io
+
 REVERSE_PATH = 'reverse_index.json'
 
 
-def extract_section(content, name):
-    lines = content.split('\n')
-    result = []
-    inside = False
-    for line in lines:
-        s = line.strip()
-        if not inside and s == name:
-            inside = True
-            continue
-        if inside:
-            if (s.startswith('# ') and s != name) or s == '---':
-                break
-            result.append(line)
-    return '\n'.join(result).strip()
-
-
 def read_node(path):
-    with open(path, 'r', encoding='utf-8', errors='replace') as f:
-        content = f.read()
-    fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
-    fm = {}
-    if fm_match:
-        for line in fm_match.group(1).split('\n'):
-            line = line.strip()
-            if ':' in line and not line.startswith('#') and not line.startswith('-'):
-                k, v = line.split(':', 1)
-                fm[k.strip()] = v.strip().strip('"')
-    nid = fm.get('id', os.path.basename(path).replace('.md', ''))
-
-    imp = extract_section(content, '# IMPULSE')
-    if not imp:
-        imp_match = re.search(r'impulse:\s*[|>]\n((?:  .*\n?)*)', content)
-        imp = imp_match.group(1).strip() if imp_match else ''
-
-    sem_section = re.search(r'semantic_links:\n((?:\s+-\s.*\n?)*)', content)
-    if not sem_section:
-        sem_section = re.search(r'## SEMANTIC_LINKS\n((?:- .*\n?)*)', content)
-    sem_links = re.findall(r'\[\[(.+?)\]\]', sem_section.group(1)) if sem_section else []
-
-    emb_section = re.search(r'## EMBED_LINKS\n((?:- .*\n?)*)', content)
-    embed_links = re.findall(r'\[\[([^\]]+)\]\]', emb_section.group(1)) if emb_section else []
-
-    anc_section = re.search(r'search_anchors:\n((?:\s+-\s.*\n?)*)', content)
-    anchors = re.findall(r'-\s*([^\s#]+)', anc_section.group(1)) if anc_section else []
-
-    return {'id': nid, 'impulse': imp, 'sem_links': sem_links,
-            'embed_links': embed_links, 'anchors': anchors}
+    d = _node_io.read_node(path)
+    if d is None:
+        return {'id': os.path.basename(path).replace('.md', ''),
+                'impulse': '', 'sem_links': [], 'embed_links': [], 'anchors': []}
+    return {'id': d['id'], 'impulse': d['impulse'],
+            'sem_links': d['semantic_links'], 'embed_links': d['embed_links'],
+            'anchors': d['search_anchors']}
 
 
 def load_index(folders):

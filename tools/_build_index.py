@@ -15,41 +15,27 @@ Usage:
 import json
 import os
 import re
+import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE)
+
+import _node_io
 NODES_DIR = os.path.join(BASE, '..', 'nodes')
 ANCHOR_DUMP = os.path.join(BASE, '..', 'anchors', 'anchor_dump.json')
 REVERSE_INDEX = os.path.join(BASE, '..', 'reverse_index.json')
 
 
 def read_node(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    parts = content.split('---', 2)
-    if len(parts) < 3:
+    """Read a node via the canonical _node_io parser.
+
+    Returns (nid, semantic_links, embed_links, anchors) for backward
+    compatibility with the rest of this script.
+    """
+    d = _node_io.read_node(path)
+    if d is None:
         return None, [], [], []
-    fm = parts[1]
-    body = parts[2]
-
-    m = re.search(r'^id:\s*(\S+)', fm, re.MULTILINE)
-    nid = m.group(1) if m else os.path.basename(path).replace('.md', '')
-
-    sem = []
-    m = re.search(r'^semantic_links:\n((?:\s+-\s.*\n?)*)', fm, re.MULTILINE)
-    if m:
-        sem = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
-
-    embed = []
-    m = re.search(r'## EMBED_LINKS\n((?:- .*\n?)*)', body)
-    if m:
-        embed = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
-
-    anchors = []
-    m = re.search(r'^search_anchors:\n((?:\s+-\s.*\n?)*)', fm, re.MULTILINE)
-    if m:
-        anchors = [a.strip().split('#')[0].strip()
-                   for a in re.findall(r'-\s*([^\s#]+)', m.group(1))]
-    return nid, sem, embed, anchors
+    return d['id'], d['semantic_links'], d['embed_links'], d['search_anchors']
 
 
 def invert(forward):

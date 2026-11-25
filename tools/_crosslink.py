@@ -21,70 +21,23 @@ from collections import defaultdict
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _node_io
+
 MIN_ANCHOR_OVERLAP = 2
 
 
 def read_node(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    parts = content.split('---', 2)
-    if len(parts) < 3:
+    d = _node_io.read_node(path)
+    if d is None:
         return None
-    fm_text = parts[1]
-
-    data = {
+    return {
         'path': path,
-        'id': None,
-        'constellation': None,
-        'anchors': [],
-        'existing_links': set(),
+        'id': d['id'],
+        'constellation': d['constellation'],
+        'anchors': d['search_anchors'],
+        'existing_links': set(d['semantic_links']),
     }
-
-    m = re.search(r'^id:\s*(\S+)', fm_text, re.MULTILINE)
-    if m:
-        data['id'] = m.group(1)
-
-    m = re.search(r'^constellation:\s*(.+)', fm_text, re.MULTILINE)
-    if m:
-        data['constellation'] = m.group(1).strip().strip('"')
-
-    in_anchors = False
-    for line in fm_text.split('\n'):
-        s = line.strip()
-        if s.startswith('search_anchors:'):
-            in_anchors = True
-            continue
-        if in_anchors:
-            if s.startswith('-'):
-                a = s.lstrip('- ').split('#')[0].strip()
-                if a:
-                    data['anchors'].append(a)
-            elif s and not s.startswith('#'):
-                in_anchors = False
-
-    in_links = False
-    for line in fm_text.split('\n'):
-        s = line.strip()
-        if s.startswith('semantic_links:'):
-            in_links = True
-            continue
-        if in_links:
-            if s.startswith('-'):
-                m2 = re.search(r'\[\[([^\]]+)\]\]', line)
-                if m2:
-                    data['existing_links'].add(m2.group(1))
-            elif s and not s.startswith('#'):
-                in_links = False
-
-    # Backward compatibility: legacy links in the body section.
-    body = parts[2]
-    if '## SEMANTIC_LINKS' in body:
-        sem_body = body.split('## SEMANTIC_LINKS')[1].split('##')[0]
-        for m2 in re.finditer(r'\[\[([^\]]+)\]\]', sem_body):
-            data['existing_links'].add(m2.group(1))
-
-    return data
 
 
 def load_all(folders):
@@ -144,28 +97,7 @@ def apply_link(nid, target, reason, nodes, max_links):
         return False
     if len(nd['existing_links']) >= max_links:
         return False
-
-    path = nd['path']
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    parts = content.split('---', 2)
-    if len(parts) < 3:
-        return False
-    fm = parts[1]
-    body = parts[2]
-
-    new_link = f'  - "[[{target}]]::{reason}"'
-    if 'semantic_links:' in fm:
-        fm_clean = re.sub(r'semantic_links:\s*\[\]', 'semantic_links:', fm, count=1)
-        fm_new = fm_clean.replace('semantic_links:', 'semantic_links:\n' + new_link, 1)
-    else:
-        fm_new = fm.rstrip() + '\nsemantic_links:\n' + new_link + '\n'
-
-    new_content = '---' + fm_new + '---' + body
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(new_content)
-    return True
+    return _node_io.add_semantic_link(nd['path'], target, reason)
 
 
 def main():

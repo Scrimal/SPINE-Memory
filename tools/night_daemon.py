@@ -27,6 +27,8 @@ if sys.platform == 'win32':
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BASE)
+sys.path.insert(0, BASE)
+import _node_io
 DEFAULT_NODES = os.path.join(ROOT, 'nodes')
 DEFAULT_THOUGHTS = os.path.join(ROOT, 'thoughts')
 INBOX = os.path.join(DEFAULT_THOUGHTS, 'inbox.md')
@@ -60,65 +62,26 @@ def _node_stamp(content, path):
     return os.path.getmtime(path)
 
 
-def extract_section(content, name):
-    lines = content.split('\n')
-    result = []
-    inside = False
-    for line in lines:
-        s = line.strip()
-        if not inside and s == name:
-            inside = True
-            continue
-        if inside:
-            if (s.startswith('# ') and s != name) or s == '---':
-                break
-            result.append(line)
-    return '\n'.join(result).strip()
-
-
 def read_node(path):
+    d = _node_io.read_node(path)
     with open(path, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
-
     data = {
-        'id': os.path.basename(path).replace('.md', ''),
-        'impulse': '',
+        'id': d['id'] if d else os.path.basename(path).replace('.md', ''),
+        'impulse': d['impulse'] if d else '',
         'weight': 0.0,
-        'sem_links': [],
-        'anchors': [],
-        'source_base': '',
-        'yaml_ok': content.startswith('---') and '---' in content[3:],
+        'sem_links': d['semantic_links'] if d else [],
+        'anchors': d['search_anchors'] if d else [],
+        'source_base': d['source_base'] if d else '',
+        'yaml_ok': d is not None,
         'mtime': _node_stamp(content, path),
     }
-
-    m = re.search(r'^id:\s*(\S+)', content, re.MULTILINE)
-    if m:
-        data['id'] = m.group(1)
-
-    imp = extract_section(content, '# IMPULSE')
-    if not imp:
-        m = re.search(r'impulse:\s*[|>]\n((?:  .*\n?)*)', content)
-        imp = m.group(1).strip() if m else ''
-    else:
-        imp = re.sub(r'^impulse:\s*[|>]\s*', '', imp).strip()
-    data['impulse'] = imp
-
     m = re.search(r'strategic_weight:\s*([\d.]+)', content)
     if m:
         try:
             data['weight'] = float(m.group(1))
         except ValueError:
             pass
-
-    m = re.search(r'semantic_links:\n((?:\s+-\s.*\n?)*)', content)
-    if m:
-        data['sem_links'] = re.findall(r'\[\[([^\]]+)\]\]', m.group(1))
-
-    m = re.search(r'search_anchors:\n((?:\s+-\s.*\n?)*)', content)
-    if m:
-        data['anchors'] = re.findall(r'-\s*([^\s#]+)', m.group(1))
-
-    data['source_base'] = extract_section(content, '# SOURCE_BASE')
     return data
 
 
