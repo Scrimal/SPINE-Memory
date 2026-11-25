@@ -75,7 +75,7 @@ def main():
     reverse = invert(forward)
     embed_reverse = invert(embed_forward)
 
-    with open(REVERSE_INDEX, 'w', encoding='utf-8') as f:
+    with open(REVERSE_INDEX, 'w', encoding='utf-8', newline='\n') as f:
         json.dump({
             'forward': forward,
             'reverse': reverse,
@@ -92,7 +92,7 @@ def main():
         canon.setdefault(a, []).extend(nids)
     for a in canon:
         canon[a] = sorted(set(canon[a]))
-    with open(ANCHOR_DUMP, 'w', encoding='utf-8') as f:
+    with open(ANCHOR_DUMP, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(canon, f, ensure_ascii=False, indent=2)
 
     print('reverse_index.json: semantic %d nodes / embed %d nodes' % (
