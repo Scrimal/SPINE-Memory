@@ -172,7 +172,7 @@ def main():
     p.add_argument('--folder', action='append', default=None,
                    help='folder with nodes (repeatable)')
     p.add_argument('--apply', action='store_true', help='write links to files')
-    p.add_argument('--max', type=int, default=1, help='max links per node')
+    p.add_argument('--max', type=int, default=3, help='max links per node')
     args = p.parse_args()
 
     folders = args.folder or ['nodes']

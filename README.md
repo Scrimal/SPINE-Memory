@@ -138,6 +138,7 @@ consumes model tokens).
     ├── _crosslink.py
     ├── _wander.py
     ├── _quality_audit.py
+    ├── _build_index.py        # rebuild reverse_index + anchor canon
     ├── mcp_server.py          # MCP server (FastMCP)
     └── benchmark_tokens.py    # token savings benchmark
 ```
@@ -145,6 +146,9 @@ consumes model tokens).
 The demo corpus (`KEDR_001..003`) is written in **Russian** to verify Cyrillic
 tokenization and semantic anchors. All tools and the schema are
 language-agnostic.
+
+Raw chunks are named `U<number>.md` and paired with `nodes/<ID>.md` by the
+trailing number (`U001` ↔ `KEDR_001`).
 
 ---
 
@@ -175,6 +179,9 @@ python tools/mcp_server.py
 
 # 7. Token savings benchmark
 python tools/benchmark_tokens.py
+
+# 8. Rebuild reverse index + refresh anchor canon
+python tools/_build_index.py
 ```
 
 ---

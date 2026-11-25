@@ -28,9 +28,9 @@ for NODE in $NODES; do
   NUM=$(echo "$NODE_ID" | grep -oE '[0-9]+' | tail -1)
   RAW_FILE="${RAW_DIR}/U${NUM}.md"
 
-  # 1. IMPULSE: не больше 2 строк
-  IMP_LINES=$(awk '/^# IMPULSE/,/^# SUMMARY/' "$NODE" | grep -c "  " 2>/dev/null)
-  if [ "$IMP_LINES" -gt 3 ]; then
+  # 1. IMPULSE: не больше 2 строк (только непустые строки между заголовками)
+  IMP_LINES=$(awk '/^# IMPULSE/{f=1;next} /^# SUMMARY/{f=0} f && NF' "$NODE" | wc -l)
+  if [ "$IMP_LINES" -gt 2 ]; then
     FAILS="$FAILS IMPULSE(${IMP_LINES})"
   fi
 

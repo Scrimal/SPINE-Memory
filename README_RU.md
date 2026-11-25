@@ -141,6 +141,7 @@ flowchart LR
     ├── _crosslink.py
     ├── _wander.py
     ├── _quality_audit.py
+    ├── _build_index.py        # пересборка reverse_index + канона якорей
     ├── mcp_server.py          # MCP-сервер (FastMCP)
     └── benchmark_tokens.py    # бенчмарк экономии токенов
 ```
@@ -148,6 +149,9 @@ flowchart LR
 Демо-корпус (`KEDR_001..003`) написан на **русском** — для проверки
 кириллической токенизации и семантических якорей. Все инструменты и схема
 языконезависимы.
+
+Сырые чанки именуются `U<номер>.md` и связываются с `nodes/<ID>.md` по
+последнему числу (`U001` ↔ `KEDR_001`).
 
 ---
 
@@ -178,6 +182,9 @@ python tools/mcp_server.py
 
 # 7. Бенчмарк экономии токенов
 python tools/benchmark_tokens.py
+
+# 8. Пересборка обратного индекса + обновление канона якорей
+python tools/_build_index.py
 ```
 
 ---
