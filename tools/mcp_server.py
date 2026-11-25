@@ -21,6 +21,7 @@ Resources:
   spine://methodology             -> methodology spec (EN)
 """
 
+import json
 import os
 import re
 
@@ -105,6 +106,16 @@ def load_index():
     return node_index, anchor_index
 
 
+def load_reverse():
+    """Load reverse links {target: [sources]} from reverse_index.json."""
+    path = os.path.join(BASE, '..', 'reverse_index.json')
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return data.get('reverse', {})
+
+
 mcp = FastMCP('spine-memory')
 
 
@@ -161,6 +172,12 @@ def spine_search_anchors(anchor: str) -> list[str]:
     """Return node ids matching an anchor."""
     _, anchor_index = load_index()
     return anchor_index.get(anchor, [])
+
+
+@mcp.tool()
+def spine_backlinks(node_id: str) -> list[str]:
+    """Return node ids that link to the given node (from reverse_index.json)."""
+    return load_reverse().get(node_id, [])
 
 
 @mcp.resource('spine://nodes/{node_id}')

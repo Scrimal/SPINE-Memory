@@ -49,6 +49,17 @@ def decay_factor(days):
     return 0.5
 
 
+def _node_stamp(content, path):
+    for key in ('last_accessed', 'updated', 'created'):
+        m = re.search(r'^%s:\s*(\d{4}-\d{2}-\d{2})' % key, content, re.MULTILINE)
+        if m:
+            try:
+                return datetime.strptime(m.group(1), '%Y-%m-%d').timestamp()
+            except ValueError:
+                pass
+    return os.path.getmtime(path)
+
+
 def extract_section(content, name):
     lines = content.split('\n')
     result = []
@@ -77,7 +88,7 @@ def read_node(path):
         'anchors': [],
         'source_base': '',
         'yaml_ok': content.startswith('---') and '---' in content[3:],
-        'mtime': os.path.getmtime(path),
+        'mtime': _node_stamp(content, path),
     }
 
     m = re.search(r'^id:\s*(\S+)', content, re.MULTILINE)
