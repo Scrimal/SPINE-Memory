@@ -146,6 +146,7 @@ flowchart LR
     ├── _wander.py
     ├── _quality_audit.py
     ├── _build_index.py        # пересборка reverse_index + канона якорей
+    ├── _embed_links.py        # импорт готовых эмбеддинг-связей
     ├── night_daemon.py        # ночная консолидация + самоаудит
     ├── mcp_server.py          # MCP-сервер (FastMCP)
     └── benchmark_tokens.py    # бенчмарк экономии токенов
@@ -193,6 +194,9 @@ python tools/_build_index.py
 
 # 9. Ночная консолидация + самоаудит
 python tools/night_daemon.py --folder nodes
+
+# 10. Импорт готовых эмбеддинг-связей (от внешнего GPU-воркера)
+python tools/_embed_links.py --input embed_links.json --folder nodes
 ```
 
 ---

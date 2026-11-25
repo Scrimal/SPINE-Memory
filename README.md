@@ -143,6 +143,7 @@ consumes model tokens).
     ├── _wander.py
     ├── _quality_audit.py
     ├── _build_index.py        # rebuild reverse_index + anchor canon
+    ├── _embed_links.py        # import precomputed embedding links
     ├── night_daemon.py        # nightly consolidation + self-audit
     ├── mcp_server.py          # MCP server (FastMCP)
     └── benchmark_tokens.py    # token savings benchmark
@@ -190,6 +191,9 @@ python tools/_build_index.py
 
 # 9. Nightly consolidation + self-audit
 python tools/night_daemon.py --folder nodes
+
+# 10. Import precomputed embedding links (from an external GPU worker)
+python tools/_embed_links.py --input embed_links.json --folder nodes
 ```
 
 ---
