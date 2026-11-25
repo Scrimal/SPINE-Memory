@@ -2,26 +2,51 @@
 """SPINE night daemon — nightly consolidation + self-audit (public/demo).
 
 Two loops:
-  «You»  — hot nodes by strategic_weight + answer to thoughts/inbox.md
-  «Me»   — self-audit: broken YAML, empty SOURCE_BASE, isolated nodes,
-            missing anchors, anchor synonyms
+  «You» — hot nodes (strategic_weight with temporal decay) + answer to
+          thoughts/inbox.md (anchor match with stopwords).
+  «Me»  — self-audit: broken YAML, empty SOURCE_BASE, isolated nodes,
+          dead links, missing inlinks, missing anchors, anchor synonyms.
+  Optional --autoheal: rebuild reverse_index.json + anchor canon after audit.
 
 Usage:
   python tools/night_daemon.py --folder nodes
-  python tools/night_daemon.py --folder nodes --todo-file TODO.md
+  python tools/night_daemon.py --folder nodes --autoheal
 """
 
 import argparse
 import os
 import re
+import subprocess
+import sys
+import time
 from collections import defaultdict
 from datetime import datetime
+
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BASE)
 DEFAULT_NODES = os.path.join(ROOT, 'nodes')
 DEFAULT_THOUGHTS = os.path.join(ROOT, 'thoughts')
 INBOX = os.path.join(DEFAULT_THOUGHTS, 'inbox.md')
+
+STOPWORDS = set(
+    'в на как что и для с по от из о при до не но а у за к или это он она они '
+    'мы вы ты мне нас тебе чем кто чего где когда почему зачем какой какая '
+    'какие сегодня завтра про без под над об'.split()
+)
+ID_RE = re.compile(r'^[A-Za-z]+[_-]?\d+')
+
+
+def decay_factor(days):
+    if days < 14:
+        return 1.0
+    if days < 30:
+        return 0.9
+    if days < 90:
+        return 0.7
+    return 0.5
 
 
 def extract_section(content, name):
@@ -52,6 +77,7 @@ def read_node(path):
         'anchors': [],
         'source_base': '',
         'yaml_ok': content.startswith('---') and '---' in content[3:],
+        'mtime': os.path.getmtime(path),
     }
 
     m = re.search(r'^id:\s*(\S+)', content, re.MULTILINE)
@@ -105,8 +131,12 @@ def audit(nodes):
         'source_empty': [],
         'isolated': [],
         'no_anchors': [],
+        'dead_links': [],
     }
     roots = defaultdict(list)
+    incoming = set()
+    all_ids = set(nodes.keys())
+
     for nid, nd in nodes.items():
         if not nd['yaml_ok']:
             metrics['yaml_broken'].append(nid)
@@ -118,6 +148,14 @@ def audit(nodes):
             metrics['no_anchors'].append(nid)
         for a in nd['anchors']:
             roots[a.split('_')[0]].append(a)
+        for t in nd['sem_links']:
+            incoming.add(t)
+            if ID_RE.match(t) and t not in all_ids:
+                metrics['dead_links'].append('%s -> %s' % (nid, t))
+
+    metrics['no_incoming'] = sorted(
+        nid for nid in all_ids if nid not in incoming and ID_RE.match(nid)
+    )
     metrics['anchor_synonyms'] = {r: sorted(set(al))
                                   for r, al in roots.items() if len(set(al)) > 1}
     return metrics
@@ -135,11 +173,12 @@ def answer_question(question, nodes):
     for nid, nd in nodes.items():
         for a in nd['anchors']:
             anchor_index[a].append(nid)
-    tokens = re.findall(r'[a-zа-яё0-9_]+', question.lower())
+    tokens = [t for t in re.findall(r'[a-zа-яё0-9_]+', question.lower())
+              if len(t) > 2 and t not in STOPWORDS]
     matched = set()
     for a in anchor_index:
         for t in tokens:
-            if t and (t in a or a in t):
+            if t in a or a in t:
                 matched.add(a)
     hit_ids = set()
     for a in matched:
@@ -155,13 +194,13 @@ def main():
     p.add_argument('--todo-file', default=None,
                    help='optional file with open tasks (for the "You" loop)')
     p.add_argument('--top', type=int, default=5)
+    p.add_argument('--autoheal', action='store_true',
+                   help='rebuild reverse_index + anchor canon after audit')
     args = p.parse_args()
 
+    now = time.time()
     folders = args.folder or [DEFAULT_NODES]
     nodes = load_all(folders)
-    ranked = sorted(nodes.values(),
-                    key=lambda n: (n['weight'], len(n['sem_links'])),
-                    reverse=True)
     met = audit(nodes)
     question = read_inbox()
 
@@ -170,6 +209,18 @@ def main():
         with open(args.todo_file, 'r', encoding='utf-8') as f:
             todo = [l.strip().lstrip('- ').strip()
                     for l in f if l.strip().startswith('-')]
+
+    def eff_weight(nd):
+        days = (now - nd['mtime']) / 86400.0
+        return nd['weight'] * decay_factor(days)
+
+    ranked = sorted(nodes.values(),
+                    key=lambda n: (eff_weight(n), len(n['sem_links'])),
+                    reverse=True)
+
+    if args.autoheal:
+        subprocess.run([sys.executable, os.path.join(BASE, '_build_index.py')],
+                       check=False)
 
     date = datetime.now().strftime('%Y-%m-%d')
     os.makedirs(args.thoughts_dir, exist_ok=True)
@@ -186,7 +237,7 @@ def main():
     lines.append('### На что обратить внимание')
     for nd in ranked[:args.top]:
         imp = nd['impulse'].replace('\n', ' ')[:100] or '—'
-        lines.append('- **%s** (w=%.2f): %s' % (nd['id'], nd['weight'], imp))
+        lines.append('- **%s** (w=%.2f): %s' % (nd['id'], eff_weight(nd), imp))
     lines.append('')
 
     if question:
@@ -201,6 +252,8 @@ def main():
         else:
             lines.append('- по якорям точных попаданий нет')
         lines.append('')
+        if os.path.exists(INBOX):
+            os.remove(INBOX)
 
     lines.append('## 🔧 Мне (self-audit)')
     lines.append('')
@@ -208,6 +261,8 @@ def main():
     lines.append('- битых YAML: %d' % len(met['yaml_broken']))
     lines.append('- пустых SOURCE_BASE: %d' % len(met['source_empty']))
     lines.append('- изолированных: %d' % len(met['isolated']))
+    lines.append('- битых ссылок: %d' % len(met['dead_links']))
+    lines.append('- без входящих: %d' % len(met['no_incoming']))
     lines.append('- без якорей (<3): %d' % len(met['no_anchors']))
     lines.append('- групп синонимов: %d' % len(met['anchor_synonyms']))
     lines.append('')
@@ -218,6 +273,10 @@ def main():
         recs.append('мигрировать SOURCE_BASE у %d нод' % len(met['source_empty']))
     if met['isolated']:
         recs.append('прогнать _crosslink для %d изолированных' % len(met['isolated']))
+    if met['dead_links']:
+        recs.append('починить %d битых ссылок' % len(met['dead_links']))
+    if met['no_incoming']:
+        recs.append('дать входящие связи %d узлам' % len(met['no_incoming']))
     if met['no_anchors']:
         recs.append('дописать якоря %d нодам' % len(met['no_anchors']))
     if met['anchor_synonyms']:
@@ -231,6 +290,9 @@ def main():
     print('nodes: %d | yaml_broken: %d | source_empty: %d | isolated: %d' % (
         met['total'], len(met['yaml_broken']), len(met['source_empty']),
         len(met['isolated'])))
+    print('dead_links: %d | no_incoming: %d | synonyms: %d | inbox: %s' % (
+        len(met['dead_links']), len(met['no_incoming']),
+        len(met['anchor_synonyms']), 'yes' if question else 'no'))
     print('briefing: ' + out_path)
 
 
