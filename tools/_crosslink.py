@@ -157,7 +157,8 @@ def apply_link(nid, target, reason, nodes, max_links):
 
     new_link = f'  - "[[{target}]]::{reason}"'
     if 'semantic_links:' in fm:
-        fm_new = fm.replace('semantic_links:', 'semantic_links:\n' + new_link, 1)
+        fm_clean = re.sub(r'semantic_links:\s*\[\]', 'semantic_links:', fm, count=1)
+        fm_new = fm_clean.replace('semantic_links:', 'semantic_links:\n' + new_link, 1)
     else:
         fm_new = fm.rstrip() + '\nsemantic_links:\n' + new_link + '\n'
 
