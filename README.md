@@ -119,6 +119,10 @@ consumes model tokens).
 
 ```
 .
+├── README.md
+├── README_RU.md
+├── SKILL.md                   # agent skill (Pi, Claude Code, Cursor)
+├── requirements.txt           # optional deps (fastmcp, tiktoken)
 ├── methodology/
 │   ├── SPINE_METHODOLOGY.md      # format spec (RU)
 │   └── SPINE_METHODOLOGY_EN.md   # format spec (EN)

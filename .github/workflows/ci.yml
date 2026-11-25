@@ -35,3 +35,9 @@ jobs:
 
       - name: Crosslink dry run
         run: python tools/_crosslink.py --folder nodes
+
+      - name: Build index
+        run: python tools/_build_index.py
+
+      - name: Token benchmark
+        run: python tools/benchmark_tokens.py

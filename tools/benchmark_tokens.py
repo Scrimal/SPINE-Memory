@@ -64,8 +64,13 @@ def main():
         if not num:
             continue
         num = num.group(1)
-        node_path = os.path.join(NODES_DIR, 'KEDR_%s.md' % num)
-        if not os.path.exists(node_path):
+        node_path = None
+        if os.path.isdir(NODES_DIR):
+            for cand in sorted(os.listdir(NODES_DIR)):
+                if cand.endswith('_%s.md' % num):
+                    node_path = os.path.join(NODES_DIR, cand)
+                    break
+        if not node_path:
             continue
 
         with open(os.path.join(RAW_DIR, fn), 'r', encoding='utf-8') as f:

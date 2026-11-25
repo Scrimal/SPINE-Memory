@@ -122,6 +122,10 @@ flowchart LR
 
 ```
 .
+├── README.md
+├── README_RU.md
+├── SKILL.md                   # скилл для агентов (Pi, Claude Code, Cursor)
+├── requirements.txt           # опц. зависимости (fastmcp, tiktoken)
 ├── methodology/
 │   ├── SPINE_METHODOLOGY.md      # спецификация (RU)
 │   └── SPINE_METHODOLOGY_EN.md   # спецификация (EN)
