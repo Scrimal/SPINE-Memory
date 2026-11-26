@@ -12,6 +12,23 @@ Battle-tested on a real-world personal knowledge graph of **532 structured memor
 nodes (~2.6M+ chars indexed)** and **460+ typed semantic links**, with schema
 integrity enforced by deterministic, zero-token CI checks.
 
+> Your IDE remembers **WHAT** is in the file. SPINE remembers **WHY** it's there — with receipts.
+
+---
+
+## SPINE in 60 seconds
+
+**Dev / IDE.** Your coding agent spots a `sleep(200)` in a retry loop and reaches
+to "clean it up". It runs `git blame`, finds the commit, then asks SPINE. SPINE
+returns a post-mortem node: *"2026-03 rate-limit incident — the API returns 429
+if we retry faster than 200 ms."* The agent leaves the line alone. No 3 AM page.
+
+**Long-horizon agent.** An agent running 500+ sessions across months, with 2.6M+
+chars of accumulated context, needs a decision from three months ago. It walks
+the funnel — `impulse` (2 lines) → `summary` (5 sentences) → `cleaned_data` →
+`source_base` — spending ~60 tokens on the first hop instead of loading the whole
+corpus. Marginal cost: **~$0.01/node**.
+
 ---
 
 ## The Problem
@@ -75,6 +92,29 @@ biological neural organization:
 
 ---
 
+## Dev Overlay: memory *around* code
+
+SPINE is not a symbol index — LSP, Tree-sitter and `ripgrep` already own that.
+SPINE stores **intent**: why a decision was made, what broke, what traps exist.
+One node type, four kinds, bound to code with a pointer to Git (not a copy of
+the source):
+
+```yaml
+kind: adr | postmortem | gotcha | contract
+repo_ref: {path, commit, lines}
+code_refs: ["src/auth/jwt.py::verify_token@a1b2c3d"]
+status: active | superseded | historical   # facts don't decay, they get superseded
+```
+
+Dev tools:
+
+- `spine_for_file(filepath)` — ADR / post-mortem / gotcha for a code file
+- `spine_preflight --files ...` — what you might break *before* you change it
+- `_git_hook.py --kind ...` — scaffold a memory node from a merged PR
+  (memory fills itself as a byproduct of normal work)
+
+---
+
 ## Graph scale & metrics
 
 | Metric | Value |
@@ -86,6 +126,15 @@ biological neural organization:
 | YAML validity — demo corpus | 100% (3/3 PASS) |
 | Chunk granularity | ~5,000 chars |
 | Retrieval strategy | progressive disclosure |
+
+---
+
+## Human-Readable & Obsidian-Ready
+
+Memory is plain Markdown in Git — open it in Obsidian, `grep` it, `diff` it,
+read it with your own eyes. No black box, no "trust me, the vector said so".
+
+![SPINE graph rendered in Obsidian](assets/graph_dark.png)
 
 ---
 
@@ -119,10 +168,13 @@ consumes model tokens).
 
 ```
 .
+├── pyproject.toml             # pip package (zero required deps)
 ├── README.md
 ├── README_RU.md
 ├── SKILL.md                   # agent skill (Pi, Claude Code, Cursor)
 ├── requirements.txt           # optional deps (fastmcp, tiktoken)
+├── assets/
+│   └── graph_dark.png         # Obsidian graph screenshot
 ├── methodology/
 │   ├── SPINE_METHODOLOGY.md      # format spec (RU)
 │   └── SPINE_METHODOLOGY_EN.md   # format spec (EN)
@@ -137,6 +189,8 @@ consumes model tokens).
 ├── anchors/
 │   └── anchor_dump.json       # anchor canon for the demo graph
 └── tools/                     # validation & traversal utilities
+    ├── cli.py                 # spine CLI entry point
+    ├── _node_io.py            # canonical node reader/writer
     ├── _critic_check.sh
     ├── _check_anchors.py
     ├── _crosslink.py
@@ -144,6 +198,8 @@ consumes model tokens).
     ├── _quality_audit.py
     ├── _build_index.py        # rebuild reverse_index + anchor canon
     ├── _embed_links.py        # import precomputed embedding links
+    ├── spine_preflight.py     # context radar for changed files
+    ├── _git_hook.py           # PR -> node scaffold
     ├── night_daemon.py        # nightly consolidation + self-audit
     ├── mcp_server.py          # MCP server (FastMCP)
     └── benchmark_tokens.py    # token savings benchmark
@@ -160,7 +216,19 @@ trailing number (`U001` ↔ `KEDR_001`).
 
 ## Quickstart
 
-All commands run from the repository root.
+Install and try it in 60 seconds:
+
+```bash
+pip install spine-memory        # core (zero required deps)
+pip install spine-memory[mcp]   # + MCP server (fastmcp)
+
+spine init --preset dev         # scaffold .spine/ inside your repo
+spine index                     # rebuild reverse_index.json
+spine wander --from ADR_001     # walk the graph
+spine mcp                       # start the MCP server
+```
+
+Or run directly from a checkout (no install):
 
 ```bash
 # 1. Auto-audit nodes (clean PASS expected)

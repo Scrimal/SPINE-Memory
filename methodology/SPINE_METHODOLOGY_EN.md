@@ -106,6 +106,32 @@ Invariant: `CLEANED_DATA` is always shorter than `SOURCE_BASE`. The concentrate
 serves navigation; the basement serves depth. If the concentrate is longer than
 the raw source, the node is broken.
 
+### 3.3 Dev overlay (CODE_MEMORY, optional)
+
+For "memory around code" — architecture decisions, post-mortems, gotchas,
+contracts — add optional frontmatter fields. SPINE does not index source code:
+LSP / Tree-sitter / `ripgrep` own that. SPINE stores *why*.
+
+```yaml
+kind: adr | postmortem | gotcha | contract   # one of four kinds
+repo_ref:                                     # pointer to Git, not a copy
+  path: src/auth/jwt.py
+  commit: a1b2c3d
+  lines: "L45-L120"
+code_refs:                                    # exact file bindings
+  - "src/auth/jwt.py::verify_token@a1b2c3d"
+  - "migrations/0042_users.sql"
+status: active | superseded | historical      # facts don't decay; they get superseded
+```
+
+- `code_refs` feeds the reverse index (`code_index`) and powers
+  `spine_for_file(filepath)` / `spine_preflight`.
+- `status` replaces `decay_factor` for code nodes: a bugfix post-mortem does not
+  become less true with time — it becomes historical. Whether it still applies
+  *now* is answered by the repository (ripgrep/LSP), never by SPINE.
+- `SOURCE_BASE` may be short for code nodes; the raw PR description / incident
+  discussion is enough — the source itself lives in Git.
+
 ---
 
 ## 4. Links

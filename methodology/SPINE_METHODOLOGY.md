@@ -104,6 +104,32 @@ semantic_links:              # смысловые связи
 Инвариант: `CLEANED_DATA` всегда короче `SOURCE_BASE`. Концентрат — для
 навигации, подвал — для глубины. Если концентрат длиннее сырья — нарушение.
 
+### 3.3 Dev-надстройка (CODE_MEMORY, опционально)
+
+Для «памяти вокруг кода» — архитектурных решений, post-mortem'ов, граблей,
+контрактов — добавляются опциональные поля фронтматтера. SPINE не индексирует
+исходники: это умеют LSP / Tree-sitter / `ripgrep`. SPINE хранит *почему*.
+
+```yaml
+kind: adr | postmortem | gotcha | contract   # один из четырёх видов
+repo_ref:                                     # указатель на Git, не копия
+  path: src/auth/jwt.py
+  commit: a1b2c3d
+  lines: "L45-L120"
+code_refs:                                    # точные привязки к файлам
+  - "src/auth/jwt.py::verify_token@a1b2c3d"
+  - "migrations/0042_users.sql"
+status: active | superseded | historical      # факты не «протухают», их вытесняют
+```
+
+- `code_refs` питает обратный индекс (`code_index`) и работает через
+  `spine_for_file(filepath)` / `spine_preflight`.
+- `status` заменяет `decay_factor` для кодовых узлов: post-mortem о багфиксе не
+  становится менее истинным со временем — он становится историческим. Применим
+  ли он *сейчас*, отвечает репозиторий (ripgrep/LSP), а не SPINE.
+- `SOURCE_BASE` для кодовых узлов может быть коротким: достаточно сырого
+  описания PR / разбора инцидента — сам код уже живёт в Git.
+
 ---
 
 ## 4. Связи
