@@ -15,3 +15,9 @@ audit_report.txt
 __pycache__/
 *.pyc
 thoughts/
+
+# Упаковка / установка
+*.egg-info/
+build/
+dist/
+.venv/
