@@ -22,17 +22,22 @@ import re
 
 # The first ``---`` opens the frontmatter; the closing one must be a ``---``
 # on its own line. Everything after it is the body.
-FM_RE = re.compile(r'^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|$)', re.DOTALL)
-
 _LIST_ITEM_RE = re.compile(r'^\s*-\s+(.*)$')
 
 
 def split_frontmatter(content):
-    """Return (frontmatter_text, body) or (None, content) if malformed."""
-    m = FM_RE.match(content)
-    if not m:
+    """Return (frontmatter_text, body) or (None, content) if malformed.
+
+    frontmatter_text has no surrounding newlines; body keeps any blank lines
+    that follow the closing ``---`` so the file can be reassembled exactly.
+    """
+    if not content.startswith('---'):
         return None, content
-    return m.group(1), content[m.end():]
+    lines = content.split('\n')
+    for i in range(1, len(lines)):
+        if lines[i].strip() == '---':
+            return '\n'.join(lines[1:i]), '\n'.join(lines[i + 1:])
+    return None, content
 
 
 def _unquote(s):
@@ -149,9 +154,9 @@ def _parse_block_map(text):
 def extract_section(content, name):
     """Extract one H1 body section (e.g. ``# IMPULSE``).
 
-    ``SOURCE_BASE`` is special: it extends to the next ``## `` H2 section or
-    the final closing ``---`` (whichever comes first), never to an inner ``#``
-    or ``---``, so raw logs are not truncated.
+    ``SOURCE_BASE`` is special: raw logs may contain ``#`` comment lines and
+    ``---`` separators, so it only stops at a ``## `` H2 metadata section or
+    the FINAL closing ``---`` (the last non-empty line of the file).
     """
     marker = '# ' + name
     lines = content.split('\n')
@@ -163,18 +168,28 @@ def extract_section(content, name):
     if start is None:
         return ''
 
-    out = []
-    for line in lines[start + 1:]:
-        s = line.strip()
-        # H1 section boundary.
-        if s.startswith('# ') and s != marker:
+    is_source = (name == 'SOURCE_BASE')
+    last_nonempty = None
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip():
+            last_nonempty = i
             break
-        # H2 metadata boundary (## SEMANTIC_LINKS / ## EMBED_LINKS).
+
+    out = []
+    for i, line in enumerate(lines[start + 1:], start=start + 1):
+        s = line.strip()
+        # H2 metadata boundary — always stops (EMBED_LINKS / SEMANTIC_LINKS).
         if s.startswith('## '):
             break
-        # Final closing --- (only when it is a standalone separator).
-        if s == '---':
-            break
+        if is_source:
+            # SOURCE_BASE: do NOT stop on '# ' (raw logs may contain comments);
+            # stop on '---' only if it is the final closing separator.
+            if s == '---' and i == last_nonempty:
+                break
+        else:
+            # Regular sections stop at the next H1 or any standalone '---'.
+            if (s.startswith('# ') and s != marker) or s == '---':
+                break
         out.append(line)
     return '\n'.join(out).strip()
 
@@ -277,6 +292,7 @@ def add_semantic_link(path, target, reason):
         return False
 
     new_link = '[[%s]]::%s' % (target, reason)
+    fm_text = fm_text.rstrip('\n')
 
     if 'semantic_links:' in fm_text:
         # Clear an empty inline list before inserting, then append.
@@ -284,9 +300,11 @@ def add_semantic_link(path, target, reason):
         fm_new = fm_new.replace(
             'semantic_links:', 'semantic_links:\n  - "%s"' % new_link, 1)
     else:
-        fm_new = fm_text.rstrip() + '\nsemantic_links:\n  - "%s"' % new_link + '\n'
+        fm_new = fm_text.rstrip() + '\nsemantic_links:\n  - "%s"' % new_link
 
-    new_content = '---' + fm_new + '---' + body
+    # Reassemble with explicit newlines around both '---' delimiters so they
+    # never glue to the first YAML key or to the body heading.
+    new_content = '---\n' + fm_new + '\n---\n' + body
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(new_content)
     return True
