@@ -19,24 +19,12 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
+try:
+    from spine_memory import _node_io
+except ImportError:
+    import _node_io
+
 MIN_SOURCE_RETENTION = 0.70
-
-
-def extract_section(content, name):
-    """Extract the body of section '# name' until the next '# ' header or '---'."""
-    lines = content.split('\n')
-    result = []
-    inside = False
-    for line in lines:
-        s = line.strip()
-        if not inside and s == name:
-            inside = True
-            continue
-        if inside:
-            if (s.startswith('# ') and s != name) or s == '---':
-                break
-            result.append(line)
-    return '\n'.join(result).strip()
 
 
 def count_lines(text):
@@ -46,79 +34,65 @@ def count_lines(text):
 
 
 def read_node(path, raw_folder):
+    d = _node_io.read_node(path)
+    if d is None:
+        return {'id': os.path.basename(path).replace('.md', ''),
+                'num_id': '', 'domain': '', 'hub': '',
+                'issues': ['[NO_YAML]'], 'anchors': [], 'vectors': 0,
+                'sem_links': 0, 'impulse': 0, 'summary': 0,
+                'cleaned': 0, 'source': 0, 'src_pct': 0}
+
     with open(path, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
-    fm = {}
-    fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
-    if fm_match:
-        for line in fm_match.group(1).split('\n'):
-            line = line.strip()
-            if ':' in line and not line.startswith('#') and not line.startswith('-'):
-                k, v = line.split(':', 1)
-                fm[k.strip()] = v.strip().strip('"')
-
-    nid = fm.get('id', os.path.basename(path).replace('.md', ''))
+    nid = d['id']
     num_id = re.search(r'(\d+)$', nid)
     num_id = num_id.group(1) if num_id else ''
 
     result = {
         'id': nid,
         'num_id': num_id,
-        'domain': fm.get('domain', ''),
-        'hub': fm.get('hub', ''),
+        'domain': d['domain'] or '',
+        'hub': d['hub'] or '',
         'content': content,
         'issues': [],
+        'anchors': d['search_anchors'],
+        'vectors': len(d['vectors']),
+        'sem_links': len(d['semantic_links']),
     }
+
+    # CODE_MEMORY nodes (kind set) don't require hub/vectors.
+    is_code_node = bool(d['kind'])
 
     if not result['domain']:
         result['issues'].append('[NO_DOMAIN]')
-    if not result['hub']:
+    if not result['hub'] and not is_code_node:
         result['issues'].append('[NO_HUB]')
-
-    anc = re.findall(r'search_anchors:\n((?:\s+-\s.*\n?)*)', content)
-    anchors = re.findall(r'-\s*([^\s#]+)', anc[0]) if anc else []
-    result['anchors'] = anchors
-
-    vec = re.findall(r'vectors:\n((?:\s+-\s.*\n?)*)', content)
-    vectors = re.findall(r'-\s*(.+)', vec[0]) if vec else []
-    result['vectors'] = len(vectors)
-    if result['vectors'] < 1:
+    if result['vectors'] < 1 and not is_code_node:
         result['issues'].append('[NO_VEC]')
-
-    sem = re.findall(r'semantic_links:\n((?:\s+-\s.*\n?)*)', content)
-    sem_links = re.findall(r'\[\[(.+?)\]\]', sem[0]) if sem else []
-    result['sem_links'] = len(sem_links)
     if result['sem_links'] < 1:
         result['issues'].append('[NO_SEM]')
-
-    if 'roots:' not in content and 'after:' not in content:
+    if not d['chronology']:
         result['issues'].append('[NO_CHRONO]')
-
     if not content.strip().endswith('---'):
         result['issues'].append('[NO_CLOSE]')
 
-    # New-format sections
-    imp = extract_section(content, '# IMPULSE')
-    imp_lines = count_lines(imp)
+    imp_lines = count_lines(d['impulse'])
     result['impulse'] = imp_lines
     if imp_lines > 2:
         result['issues'].append('IMPULSE:%d' % imp_lines)
 
-    summ = extract_section(content, '# SUMMARY')
-    sum_lines = count_lines(summ)
+    sum_lines = count_lines(d['summary'])
     result['summary'] = sum_lines
     if sum_lines > 5:
         result['issues'].append('SUMMARY:%d' % sum_lines)
 
-    cln = extract_section(content, '# CLEANED_DATA')
-    cln_lines = count_lines(cln)
+    cln_lines = count_lines(d['cleaned_data'])
     result['cleaned'] = cln_lines
     if cln_lines < 10:
         result['issues'].append('CLEANED:%d' % cln_lines)
 
-    src = extract_section(content, '# SOURCE_BASE')
-    src_lines = count_lines(src)
+    src_lines = count_lines(d['source_base'])
     result['source'] = src_lines
 
     if sum_lines > 0 and cln_lines > 0 and sum_lines > cln_lines / 2:
@@ -127,29 +101,24 @@ def read_node(path, raw_folder):
     if imp_lines > 0 and sum_lines > 0 and imp_lines > sum_lines:
         result['issues'].append('IMP>SUM')
 
-    if '# IMPACT' not in content:
+    if not d['impact']:
         result['issues'].append('[NO_IMPACT]')
 
-    chrono_text = ''
-    cm = re.search(r'chronology:\n((?:  .*\n?)*)', content)
-    if cm:
-        chrono_text = cm.group(1)
-    after_match = re.search(r'after:(.*)', chrono_text)
-    has_typed_after = after_match and (':' in after_match.group(1))
-    if 'after:' in chrono_text and not has_typed_after:
+    after = d['chronology'].get('after', '') if d['chronology'] else ''
+    if after and ':' not in after:
         result['issues'].append('[CHRONO_NOTYPED]')
 
-    if len(anchors) < 3:
-        result['issues'].append('ANCHORS:%d' % len(anchors))
-    if len(anchors) > 5:
-        result['issues'].append('ANCHORS:%d' % len(anchors))
+    if len(result['anchors']) < 3:
+        result['issues'].append('ANCHORS:%d' % len(result['anchors']))
+    if len(result['anchors']) > 5:
+        result['issues'].append('ANCHORS:%d' % len(result['anchors']))
 
     # SOURCE_BASE / raw retention ratio
     if num_id and raw_folder:
         raw_path = os.path.join(raw_folder, 'U' + num_id + '.md')
         if os.path.exists(raw_path):
             raw_size = os.path.getsize(raw_path)
-            src_bytes = len(src.encode('utf-8'))
+            src_bytes = len(d['source_base'].encode('utf-8'))
             src_pct = src_bytes * 100 / max(raw_size, 1)
             result['src_pct'] = int(src_pct)
             if src_pct < MIN_SOURCE_RETENTION * 100:

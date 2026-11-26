@@ -122,7 +122,7 @@ Dev tools:
 | Production graph scale | 532 nodes (~2.6M+ chars indexed) |
 | Typed semantic links | 460+ edges |
 | Embedding links | 1496 (top-5, threshold 0.88) |
-| YAML validity — production | 97% (518/532), enforced by `critic_check` |
+| YAML validity — production | 100% (532/532), enforced by `critic_check` |
 | YAML validity — demo corpus | 100% (3/3 PASS) |
 | Chunk granularity | ~5,000 chars |
 | Retrieval strategy | progressive disclosure |

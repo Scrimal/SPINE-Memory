@@ -40,6 +40,40 @@ def split_frontmatter(content):
     return None, content
 
 
+def find_spine_root():
+    """Return the graph root dir (the folder that owns nodes/ + reverse_index.json).
+
+    Priority:
+      1. SPINE_DIR env var
+      2. .spine/ in cwd or an ancestor
+      3. cwd, if it looks like a graph root (nodes/ + reverse_index.json)
+      4. the checkout root (parent of this file's directory)
+
+    This makes pip-installed tools resolve the *user's* graph, not the
+    package's site-packages folder.
+    """
+    env = os.environ.get('SPINE_DIR')
+    if env and os.path.isdir(env):
+        return os.path.abspath(env)
+
+    cur = os.path.abspath(os.getcwd())
+    while True:
+        candidate = os.path.join(cur, '.spine')
+        if os.path.isdir(candidate):
+            return candidate
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+
+    cwd = os.path.abspath(os.getcwd())
+    if os.path.isdir(os.path.join(cwd, 'nodes')) and \
+       os.path.exists(os.path.join(cwd, 'reverse_index.json')):
+        return cwd
+
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _unquote(s):
     s = s.strip()
     if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):

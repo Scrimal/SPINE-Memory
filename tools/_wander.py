@@ -129,7 +129,7 @@ def main():
                    help='also walk embed links (## EMBED_LINKS)')
     args = p.parse_args()
 
-    folders = args.folder or ['nodes']
+    folders = args.folder or [os.path.join(_node_io.find_spine_root(), 'nodes')]
     ni, ai = load_index(folders)
     bl = load_reverse(args.embed) if args.back else None
 

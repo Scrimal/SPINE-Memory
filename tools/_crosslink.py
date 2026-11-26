@@ -110,7 +110,7 @@ def main():
     p.add_argument('--max', type=int, default=3, help='max links per node')
     args = p.parse_args()
 
-    folders = args.folder or ['nodes']
+    folders = args.folder or [os.path.join(_node_io.find_spine_root(), 'nodes')]
 
     nodes = load_all(folders)
     pairs = find_pairs(nodes)

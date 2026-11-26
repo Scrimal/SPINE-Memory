@@ -26,12 +26,13 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(BASE)
 
 try:
     from spine_memory import _node_io
 except ImportError:
     import _node_io
+
+ROOT = _node_io.find_spine_root()
 DEFAULT_NODES = os.path.join(ROOT, 'nodes')
 DEFAULT_THOUGHTS = os.path.join(ROOT, 'thoughts')
 INBOX = os.path.join(DEFAULT_THOUGHTS, 'inbox.md')

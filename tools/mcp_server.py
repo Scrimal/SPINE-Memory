@@ -37,7 +37,7 @@ try:
     from spine_memory import _node_io
 except ImportError:
     import _node_io
-NODES_DIR = os.path.join(BASE, '..', 'nodes')
+NODES_DIR = os.path.join(_node_io.find_spine_root(), 'nodes')
 METHODOLOGY_EN = os.path.join(BASE, '..', 'methodology', 'SPINE_METHODOLOGY_EN.md')
 
 LAYERS = ('impulse', 'summary', 'cleaned', 'impact', 'source_base')
@@ -83,7 +83,7 @@ def load_index():
 
 def load_reverse(include_embed=False):
     """Load reverse links {target: [sources]} from reverse_index.json."""
-    path = os.path.join(BASE, '..', 'reverse_index.json')
+    path = os.path.join(_node_io.find_spine_root(), 'reverse_index.json')
     if not os.path.exists(path):
         return {}
     with open(path, 'r', encoding='utf-8') as f:
@@ -166,7 +166,7 @@ def spine_backlinks(node_id: str, include_embed: bool = False) -> list[str]:
 @mcp.tool()
 def spine_for_file(filepath: str) -> list[dict]:
     """Return SPINE nodes (ADR/post-mortem/gotcha) linked to a code file."""
-    path = os.path.join(BASE, '..', 'reverse_index.json')
+    path = os.path.join(_node_io.find_spine_root(), 'reverse_index.json')
     if not os.path.exists(path):
         return []
     with open(path, 'r', encoding='utf-8') as f:

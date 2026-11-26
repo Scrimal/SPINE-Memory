@@ -23,9 +23,9 @@ try:
     from spine_memory import _node_io
 except ImportError:
     import _node_io
-NODES_DIR = os.path.join(BASE, '..', 'nodes')
-ANCHOR_DUMP = os.path.join(BASE, '..', 'anchors', 'anchor_dump.json')
-REVERSE_INDEX = os.path.join(BASE, '..', 'reverse_index.json')
+NODES_DIR = os.path.join(_node_io.find_spine_root(), 'nodes')
+ANCHOR_DUMP = os.path.join(_node_io.find_spine_root(), 'anchors', 'anchor_dump.json')
+REVERSE_INDEX = os.path.join(_node_io.find_spine_root(), 'reverse_index.json')
 
 
 def read_node(path):

@@ -15,6 +15,11 @@ import argparse
 import json
 import os
 
+try:
+    from spine_memory._node_io import find_spine_root
+except ImportError:
+    from _node_io import find_spine_root
+
 
 def inject_embed_links(content, links):
     lines = content.split('\n')
@@ -47,15 +52,18 @@ def main():
         description='Inject precomputed embedding links into SPINE nodes.'
     )
     p.add_argument('--input', required=True, help='path to embed links JSON')
-    p.add_argument('--folder', default='nodes', help='folder with nodes')
+    p.add_argument('--folder', default=None, help='folder with nodes')
     args = p.parse_args()
+    folder = args.folder or os.path.join(find_spine_root(), 'nodes')
 
     with open(args.input, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     applied = 0
     for nid, links in data.items():
-        path = os.path.join(args.folder, nid + '.md')
+        if not links:
+            continue
+        path = os.path.join(folder, nid + '.md')
         if not os.path.exists(path):
             print('skip (not found): %s' % nid)
             continue

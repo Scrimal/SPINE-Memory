@@ -16,9 +16,15 @@ Usage:
 import os
 import re
 
+try:
+    from spine_memory._node_io import read_node, find_spine_root
+except ImportError:
+    from _node_io import read_node, find_spine_root
+
 BASE = os.path.dirname(os.path.abspath(__file__))
-RAW_DIR = os.path.join(BASE, '..', 'raw')
-NODES_DIR = os.path.join(BASE, '..', 'nodes')
+ROOT = find_spine_root()
+RAW_DIR = os.path.join(ROOT, 'raw')
+NODES_DIR = os.path.join(ROOT, 'nodes')
 
 try:
     import tiktoken
@@ -30,22 +36,6 @@ except ImportError:
     TOKENIZER = 'chars/4 (approximate)'
     def count_tokens(text):
         return max(1, len(text) // 4)
-
-
-def extract_section(content, name):
-    lines = content.split('\n')
-    result = []
-    inside = False
-    for line in lines:
-        s = line.strip()
-        if not inside and s == name:
-            inside = True
-            continue
-        if inside:
-            if (s.startswith('# ') and s != name) or s == '---':
-                break
-            result.append(line)
-    return '\n'.join(result).strip()
 
 
 def main():
@@ -75,13 +65,12 @@ def main():
 
         with open(os.path.join(RAW_DIR, fn), 'r', encoding='utf-8') as f:
             raw_text = f.read()
-        with open(node_path, 'r', encoding='utf-8') as f:
-            node = f.read()
 
+        d = read_node(node_path) or {}
         layered_text = '\n\n'.join([
-            extract_section(node, '# IMPULSE'),
-            extract_section(node, '# SUMMARY'),
-            extract_section(node, '# CLEANED_DATA'),
+            d.get('impulse', ''),
+            d.get('summary', ''),
+            d.get('cleaned_data', ''),
         ])
 
         raw_tokens = count_tokens(raw_text)

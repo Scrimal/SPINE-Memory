@@ -19,12 +19,12 @@ import subprocess
 import sys
 
 try:
-    from spine_memory._node_io import read_node
+    from spine_memory._node_io import read_node, find_spine_root
 except ImportError:
-    from _node_io import read_node
+    from _node_io import read_node, find_spine_root
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(BASE)
+ROOT = find_spine_root()
 
 
 def load_code_index(path):

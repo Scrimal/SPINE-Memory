@@ -151,12 +151,18 @@ SCRIPT_MAP = {
     'wander': '_wander.py',
     'preflight': 'spine_preflight.py',
     'mcp': 'mcp_server.py',
+    'audit': '_quality_audit.py',
+    'crosslink': '_crosslink.py',
+    'hook': '_git_hook.py',
+    'daemon': 'night_daemon.py',
+    'benchmark': 'benchmark_tokens.py',
+    'embed': '_embed_links.py',
 }
 
 
 def main():
     if len(sys.argv) < 2:
-        print('usage: spine <init|index|wander|preflight|mcp> [args]')
+        print('usage: spine <init|index|wander|preflight|mcp|audit|crosslink|hook|daemon|benchmark|embed> [args]')
         return
 
     cmd = sys.argv[1]
@@ -172,7 +178,7 @@ def main():
     script = SCRIPT_MAP.get(cmd)
     if not script:
         print('unknown command: %s' % cmd)
-        print('usage: spine <init|index|wander|preflight|mcp> [args]')
+        print('usage: spine <init|index|wander|preflight|mcp|audit|crosslink|hook|daemon|benchmark|embed> [args]')
         return
 
     subprocess.run([sys.executable, os.path.join(BASE, script)] + rest)
