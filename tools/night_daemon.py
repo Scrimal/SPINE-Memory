@@ -72,6 +72,8 @@ def read_node(path):
         'weight': 0.0,
         'sem_links': d['semantic_links'] if d else [],
         'anchors': d['search_anchors'] if d else [],
+        'code_refs': d['code_refs'] if d else [],
+        'repo_ref': d['repo_ref'] if d else {},
         'source_base': d['source_base'] if d else '',
         'yaml_ok': d is not None,
         'mtime': _node_stamp(content, path),
@@ -98,7 +100,7 @@ def load_all(folders):
     return nodes
 
 
-def audit(nodes):
+def audit(nodes, repo=None):
     metrics = {
         'total': len(nodes),
         'yaml_broken': [],
@@ -106,6 +108,7 @@ def audit(nodes):
         'isolated': [],
         'no_anchors': [],
         'dead_links': [],
+        'stale_code_refs': [],
     }
     roots = defaultdict(list)
     incoming = set()
@@ -126,6 +129,11 @@ def audit(nodes):
             incoming.add(t)
             if ID_RE.match(t) and t not in all_ids:
                 metrics['dead_links'].append('%s -> %s' % (nid, t))
+        if repo:
+            for ref in nd['code_refs']:
+                p = ref.split('::')[0].split('@')[0].strip()
+                if p and not os.path.exists(os.path.join(repo, p)):
+                    metrics['stale_code_refs'].append('%s -> %s' % (nid, p))
 
     metrics['no_incoming'] = sorted(
         nid for nid in all_ids if nid not in incoming and ID_RE.match(nid)
@@ -170,12 +178,14 @@ def main():
     p.add_argument('--top', type=int, default=5)
     p.add_argument('--autoheal', action='store_true',
                    help='rebuild reverse_index + anchor canon after audit')
+    p.add_argument('--repo', default=None,
+                   help='git repo root to resolve code_refs against')
     args = p.parse_args()
 
     now = time.time()
     folders = args.folder or [DEFAULT_NODES]
     nodes = load_all(folders)
-    met = audit(nodes)
+    met = audit(nodes, args.repo)
     question = read_inbox()
 
     todo = []
@@ -239,6 +249,7 @@ def main():
     lines.append('- без входящих: %d' % len(met['no_incoming']))
     lines.append('- без якорей (<3): %d' % len(met['no_anchors']))
     lines.append('- групп синонимов: %d' % len(met['anchor_synonyms']))
+    lines.append('- протухших code_refs: %d' % len(met['stale_code_refs']))
     lines.append('')
     recs = []
     if met['yaml_broken']:
@@ -255,6 +266,8 @@ def main():
         recs.append('дописать якоря %d нодам' % len(met['no_anchors']))
     if met['anchor_synonyms']:
         recs.append('слить %d групп синонимов в канон' % len(met['anchor_synonyms']))
+    if met['stale_code_refs']:
+        recs.append('обновить %d протухших ссылок на код' % len(met['stale_code_refs']))
     lines.append('### Рекомендации')
     lines.extend('- %s' % r for r in recs) if recs else lines.append('- граф здоров')
 
