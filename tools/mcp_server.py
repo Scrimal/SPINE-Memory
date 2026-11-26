@@ -32,8 +32,11 @@ except ImportError:  # pragma: no cover - fallback to the standalone package
     from fastmcp import FastMCP
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE)
-import _node_io
+
+try:
+    from spine_memory import _node_io
+except ImportError:
+    import _node_io
 NODES_DIR = os.path.join(BASE, '..', 'nodes')
 METHODOLOGY_EN = os.path.join(BASE, '..', 'methodology', 'SPINE_METHODOLOGY_EN.md')
 

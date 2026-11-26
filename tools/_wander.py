@@ -18,8 +18,10 @@ import sys
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import _node_io
+try:
+    from spine_memory import _node_io
+except ImportError:
+    import _node_io
 
 REVERSE_PATH = 'reverse_index.json'
 

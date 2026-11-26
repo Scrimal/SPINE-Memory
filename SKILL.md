@@ -60,3 +60,35 @@ python tools/_build_index.py
 Raw chunks live in `raw/U<number>.md`. Processed nodes live in
 `nodes/<ID>.md`. The critic matches `nodes/KEDR_001.md` to `raw/U001.md` by the
 trailing number — keep this pairing when adding new domains.
+
+## Dev Overlay: memory around code (not code itself)
+
+SPINE does **not** index source code — LSP / Tree-sitter / `ripgrep` own that.
+SPINE stores the **intent**: why a decision was made, what broke and how it was
+fixed, what traps exist.
+
+### Routing rule (always)
+
+- question about a symbol / path / line → `ripgrep` / LSP first
+- question about why / decision / history → SPINE first
+- both → SPINE for context, `ripgrep` for ground truth
+
+### CODE_MEMORY node (one type, four kinds)
+
+```yaml
+kind: adr | postmortem | gotcha | contract
+repo_ref: {path, commit, lines}      # pointer to code, NOT a copy (Git is the store)
+code_refs: ["src/a.py::fn@abc123", ...]  # exact file bindings
+status: active | superseded | historical   # facts don't decay, they get superseded
+```
+
+- `adr` — architectural decision (why X, alternatives, tradeoffs)
+- `postmortem` — incident investigation (`roots -> after` works perfectly)
+- `gotcha` — repo trap (build order, SDK bug, deploy quirk)
+- `contract` — API schema/event shape (store as "as-of" facts; rots fastest)
+
+### Dev tools
+
+- `spine_for_file(filepath)` — ADR/post-mortem/gotcha linked to a code file
+- `spine_preflight --files ...` — what you might break before you change it
+- `_git_hook.py --kind ...` — scaffold a node from a merged PR (byproduct filling)

@@ -27,8 +27,11 @@ if sys.platform == 'win32':
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BASE)
-sys.path.insert(0, BASE)
-import _node_io
+
+try:
+    from spine_memory import _node_io
+except ImportError:
+    import _node_io
 DEFAULT_NODES = os.path.join(ROOT, 'nodes')
 DEFAULT_THOUGHTS = os.path.join(ROOT, 'thoughts')
 INBOX = os.path.join(DEFAULT_THOUGHTS, 'inbox.md')
