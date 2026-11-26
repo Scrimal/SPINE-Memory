@@ -40,7 +40,7 @@ NODE_ID_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]*\d+$')
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DUMP = os.environ.get(
     'SPINE_ANCHOR_DUMP',
-    os.path.join(SCRIPT_DIR, '..', 'anchors', 'anchor_dump.json'),
+    os.path.join(_node_io.find_spine_root(), 'anchors', 'anchor_dump.json'),
 )
 
 

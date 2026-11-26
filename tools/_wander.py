@@ -23,7 +23,7 @@ try:
 except ImportError:
     import _node_io
 
-REVERSE_PATH = 'reverse_index.json'
+REVERSE_PATH = os.path.join(_node_io.find_spine_root(), 'reverse_index.json')
 
 
 def read_node(path):
