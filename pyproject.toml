@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spine-memory"
-version = "0.2.0"
+version = "0.2.1"
 description = "Hierarchical Markdown/YAML graph memory for long-horizon AI agents — git-native, zero-token CI guardrails, no vector DB."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,10 +13,24 @@ keywords = ["memory", "llm", "ai-agent", "markdown", "knowledge-graph", "mcp", "
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = []  # zero required deps — the core runs on stdlib only
+
+[project.urls]
+Homepage = "https://github.com/Scrimal/SPINE-Memory"
+Repository = "https://github.com/Scrimal/SPINE-Memory"
+Documentation = "https://github.com/Scrimal/SPINE-Memory/blob/main/methodology/SPINE_METHODOLOGY_EN.md"
+Issues = "https://github.com/Scrimal/SPINE-Memory/issues"
+Changelog = "https://github.com/Scrimal/SPINE-Memory/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0.0"]
