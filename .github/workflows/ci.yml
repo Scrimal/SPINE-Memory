@@ -23,9 +23,9 @@ jobs:
 
       - name: Anchor validation
         run: |
-          python tools/_check_anchors.py nodes/KEDR_001.md --dump anchors/anchor_dump.json --quiet
-          python tools/_check_anchors.py nodes/KEDR_002.md --dump anchors/anchor_dump.json --quiet
-          python tools/_check_anchors.py nodes/KEDR_003.md --dump anchors/anchor_dump.json --quiet
+          for n in 001 002 003 004 005 006; do
+            python tools/_check_anchors.py nodes/KEDR_$n.md --dump anchors/anchor_dump.json --quiet
+          done
 
       - name: Quality audit
         run: python tools/_quality_audit.py --nodes nodes --raw raw

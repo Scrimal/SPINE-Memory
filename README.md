@@ -205,9 +205,10 @@ consumes model tokens).
     └── benchmark_tokens.py    # token savings benchmark
 ```
 
-The demo corpus (`KEDR_001..003`) is written in **Russian** to verify Cyrillic
+The demo corpus (`KEDR_001..006`) is written in **Russian** to verify Cyrillic
 tokenization and semantic anchors. All tools and the schema are
-language-agnostic.
+language-agnostic. The full story is told as a longread in
+[`docs/longread.md`](docs/longread.md) — each chapter maps to one SPINE mechanic.
 
 Raw chunks are named `U<number>.md` and paired with `nodes/<ID>.md` by the
 trailing number (`U001` ↔ `KEDR_001`).
